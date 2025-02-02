@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "AdFriend",
+  "version": "1.0.0",
+  "description": "Transform ads into positive content",
+  "permissions": ["activeTab", "scripting"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["contentScript.js"]
+    }
+  ],
+  "icons": {
+    "128": "icons/icon128.png"
+  }
+}

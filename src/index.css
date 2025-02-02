@@ -1,0 +1,12 @@
+/* src/styles/tailwind.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.adfriend-replacement {
+    @apply transition-all duration-300 ease-in-out;
+  }
+  
+  .adfriend-container {
+    @apply fixed bottom-4 right-4 z-[9999];
+  }
