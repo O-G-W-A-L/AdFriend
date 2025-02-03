@@ -4,8 +4,13 @@
   "version": "1.0.0",
   "description": "Transform ads into positive content",
   "permissions": ["activeTab", "scripting"],
+  "host_permissions": ["<all_urls>"],
+  "action":{
+    "default_popup": "index.html"
+  },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "content_scripts": [
     {
