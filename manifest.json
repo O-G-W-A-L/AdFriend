@@ -5,7 +5,7 @@
   "description": "Transform ads into positive content",
   "permissions": ["activeTab", "scripting"],
   "host_permissions": ["<all_urls>"],
-  "action":{
+  "action": {
     "default_popup": "index.html"
   },
   "background": {
@@ -15,7 +15,8 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["contentScript.js"]
+      "js": ["contentScript.js"],
+      "run_at": "document_idle"
     }
   ],
   "icons": {

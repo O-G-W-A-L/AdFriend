@@ -1,16 +1,16 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
+import { chromeExtension } from 'vite-plugin-chrome-extension'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), chromeExtension()],
   build: {
     outDir: 'dist',
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'index.html'),
-        background: resolve(__dirname, 'src/background.js'),
-        contentScript: resolve(__dirname, 'src/contentScript.js'),
+        manifest: resolve(__dirname, 'manifest.json')
+
       },
       output: {
         entryFileNames: `[name].js`,
@@ -21,8 +21,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src'),
-    },
+      '@': resolve(__dirname, 'src')
+    }
   },
-  publicDir: 'public',
+  publicDir: 'public'
 })

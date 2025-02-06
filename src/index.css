@@ -1,12 +1,37 @@
-/* src/styles/tailwind.css */
+/* Tailwind base styles */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Content script style reset */
 .adfriend-replacement {
-    @apply transition-all duration-300 ease-in-out;
-  }
-  
-  .adfriend-container {
-    @apply fixed bottom-4 right-4 z-[9999];
-  }
+  all: initial !important;
+  font-family: ui-sans-serif, system-ui, sans-serif !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  z-index: 99999 !important;
+}
+
+/* Tailwind component styles */
+.adfriend-replacement .bg-white {
+  @apply bg-white !important;
+}
+.adfriend-replacement .rounded-lg {
+  @apply rounded-lg !important;
+}
+.adfriend-replacement .shadow-lg {
+  @apply shadow-lg !important;
+}
+.adfriend-replacement .p-4 {
+  @apply p-4 !important;
+}
+.adfriend-replacement .flex {
+  @apply flex !important;
+}
+.adfriend-replacement .items-center {
+  @apply items-center !important;
+}
+.adfriend-replacement .justify-center {
+  @apply justify-center !important;
+}

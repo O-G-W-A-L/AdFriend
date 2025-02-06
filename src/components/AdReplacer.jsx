@@ -1,22 +1,37 @@
-import { useEffect, useState } from 'react'
-import MotivationalQuote from './MotivationalQuote'
-import ActivityReminder from './ActivityReminder'
+import { useEffect, useState } from "react";
+import MotivationalQuote from "./MotivationalQuote";
+import ActivityReminder from "./ActivityReminder";
 
-const AdReplacer = () => {
-  const [widgetType, setWidgetType] = useState('quote')
+const AdReplacerComponent = ({ width, height }) => {
+  const [contentType, setContentType] = useState(null);
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const types = ['quote', 'reminder']
-    const randomType = types[Math.floor(Math.random() * types.length)]
-    setWidgetType(randomType)
-  }, [])
+    // Load settings from storage
+    chrome.storage.local.get(['settings'], ({ settings }) => {
+      const type = settings?.contentType || 'random';
+      setContentType(type === 'random' 
+        ? Math.random() > 0.5 ? 'quote' : 'reminder'
+        : type
+      );
+      setIsVisible(true);
+    });
+
+    // Cleanup
+    return () => setIsVisible(false);
+  }, []);
+
+  if (!isVisible) return null;
 
   return (
-    <div className="p-4 bg-white rounded-lg shadow-xl animate-fade-in">
-      {widgetType === 'quote' && <MotivationalQuote />}
-      {widgetType === 'reminder' && <ActivityReminder />}
+    <div className="adfriend-content-container" 
+         style={{ width: `${width}px`, height: `${height}px` }}>
+      <div className="adfriend-inner-content">
+        {contentType === 'quote' && <MotivationalQuote />}
+        {contentType === 'reminder' && <ActivityReminder />}
+      </div>
     </div>
-  )
-}
+  );
+};
 
-export default AdReplacer
+export default AdReplacerComponent;
