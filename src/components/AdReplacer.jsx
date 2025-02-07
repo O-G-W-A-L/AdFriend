@@ -1,21 +1,21 @@
 import { useEffect, useState } from "react";
 import MotivationalQuote from "./MotivationalQuote";
 import ActivityReminder from "./ActivityReminder";
+import TodoList from "./TodoList"; // Ensure you have a TodoList component
 
-const AdReplacerComponent = ({ width, height }) => {
+const AdReplacer = ({ width, height }) => {
   const [contentType, setContentType] = useState(null);
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    // Load settings from storage
-    chrome.storage.local.get(['settings'], ({ settings }) => {
-      const type = settings?.contentType || 'random';
-      setContentType(type === 'random' 
-        ? Math.random() > 0.5 ? 'quote' : 'reminder'
-        : type
-      );
-      setIsVisible(true);
-    });
+    // Randomly pick content type: quote, reminder, or to-do list
+    const contentOptions = ['quote', 'reminder', 'todo']; // Add 'todo' for ToDoList component
+    const randomContentType = contentOptions[Math.floor(Math.random() * contentOptions.length)];
+
+    // Set the content type to the randomly chosen one
+    setContentType(randomContentType);
+
+    setIsVisible(true);
 
     // Cleanup
     return () => setIsVisible(false);
@@ -29,9 +29,10 @@ const AdReplacerComponent = ({ width, height }) => {
       <div className="adfriend-inner-content">
         {contentType === 'quote' && <MotivationalQuote />}
         {contentType === 'reminder' && <ActivityReminder />}
+        {contentType === 'todo' && <TodoList />} {/* Render to-do list if 'todo' is chosen */}
       </div>
     </div>
   );
 };
 
-export default AdReplacerComponent;
+export default AdReplacer;

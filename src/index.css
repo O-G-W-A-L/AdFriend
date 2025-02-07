@@ -1,37 +1,9 @@
-/* Tailwind base styles */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
 
-/* Content script style reset */
-.adfriend-replacement {
-  all: initial !important;
-  font-family: ui-sans-serif, system-ui, sans-serif !important;
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  z-index: 99999 !important;
-}
-
-/* Tailwind component styles */
-.adfriend-replacement .bg-white {
-  @apply bg-white !important;
-}
-.adfriend-replacement .rounded-lg {
-  @apply rounded-lg !important;
-}
-.adfriend-replacement .shadow-lg {
-  @apply shadow-lg !important;
-}
-.adfriend-replacement .p-4 {
-  @apply p-4 !important;
-}
-.adfriend-replacement .flex {
-  @apply flex !important;
-}
-.adfriend-replacement .items-center {
-  @apply items-center !important;
-}
-.adfriend-replacement .justify-center {
-  @apply justify-center !important;
+body {
+  width: 400px;
+  height: 600px;
+  overflow-y: auto;
 }
