@@ -1,27 +1,19 @@
 console.log("AdFriend content script loaded!");
 
+import { renderQuote } from "./render/renderQuote.js";
+import { renderReminder } from "./render/renderReminder.js";
+import { renderTodoLists } from "./render/renderTodoLists.js";
+
 // --- Configuration ---
 const AD_CONFIG = {
   adKeywords: [
-    "\\bad\\b",
-    "\\bads\\b",
-    "\\badvert\\b",
-    "\\badvertisement\\b",
-    "\\bsponsored\\b",
-    "\\bpromoted\\b",
-    "\\bbanner\\b",
-    "\\bbannerad\\b",
-    "\\brecommended\\b"
+    "\\bad\\b", "\\bads\\b", "\\badvert\\b", "\\badvertisement\\b",
+    "\\bsponsored\\b", "\\bpromoted\\b", "\\bbanner\\b",
+    "\\bbannerad\\b", "\\brecommended\\b"
   ],
   blocklist: [
-    "\\badd\\b",
-    "\\baddress\\b",
-    "\\badmin\\b",
-    "\\badvance\\b",
-    "\\bavatar\\b",
-    "\\bbadge\\b",
-    "\\bcard\\b",
-    "\\bcloud\\b"
+    "\\badd\\b", "\\baddress\\b", "\\badmin\\b", "\\badvance\\b",
+    "\\bavatar\\b", "\\bbadge\\b", "\\bcard\\b", "\\bcloud\\b"
   ],
   attributes: ["data-ad", "data-ad-type", "role", "id", "class", "aria-label"],
   minSize: { width: 100, height: 50 }
@@ -31,80 +23,139 @@ const adRegex = new RegExp(AD_CONFIG.adKeywords.join("|"), "i");
 const blockRegex = new RegExp(AD_CONFIG.blocklist.join("|"), "i");
 
 // --- Ad Detection ---
-function isAdElement(element) {
-  if (!element || !element.matches || element.dataset.adfriendProcessed) return false;
-  if (element.closest("header, nav, footer, aside")) return false;
-  if (element.classList.contains("adsbygoogle") || element.hasAttribute("data-ad-client")) {
+function isAdElement(el) {
+  if (!el || !el.matches || el.dataset.adfriendProcessed || el.closest("header, nav, footer, aside"))
+    return false;
+  if (el.classList.contains("adsbygoogle") || el.hasAttribute("data-ad-client"))
     return true;
-  }
-
-  let rect;
   try {
-    rect = element.getBoundingClientRect();
+    const { width, height } = el.getBoundingClientRect();
+    if (width < AD_CONFIG.minSize.width || height < AD_CONFIG.minSize.height ||
+        window.getComputedStyle(el).visibility === "hidden")
+      return false;
   } catch (e) {
     return false;
   }
-  if (rect.width < AD_CONFIG.minSize.width || rect.height < AD_CONFIG.minSize.height) return false;
-  if (window.getComputedStyle(element).visibility === "hidden") return false;
-
-  const attributeContent = AD_CONFIG.attributes
-    .map(attr => (element.getAttribute(attr) || "").toLowerCase())
-    .join(" ");
-
-  return adRegex.test(attributeContent) && !blockRegex.test(attributeContent);
+  const attr = AD_CONFIG.attributes.map(a => (el.getAttribute(a) || "").toLowerCase()).join(" ");
+  return adRegex.test(attr) && !blockRegex.test(attr);
 }
 
 // --- Replacement Manager ---
 class ReplacementManager {
-  replaceAd(adElement) {
-    if (!adElement || !adElement.parentNode || adElement.dataset.adfriendProcessed) return;
+  constructor() {
+    this.types = ['quote', 'reminder', 'todo'];
+    this.counter = 0;
+    this.quoteIndex = 0; // Track current quote index
+    this.reminderIndex = 0; // Track current reminder index
+  }
 
-    adElement.dataset.adfriendProcessed = "true";
-    console.log("🔄 Replacing ad:", adElement);
+  replaceAd(el) {
+    if (!el || !el.parentNode || el.dataset.adfriendProcessed) return;
+    el.dataset.adfriendProcessed = "true";
+    console.log("🔄 Replacing ad:", el);
 
-    const { width, height } = adElement.getBoundingClientRect();
-    const adWidth = width || 300;
-    const adHeight = height || 250;
+    const { width, height } = el.getBoundingClientRect();
+    const w = width || 300, h = height || 250;
 
-    const replacement = document.createElement("div");
-    replacement.className = "adfriend-replacement";
-    Object.assign(replacement.style, {
-      width: `${adWidth}px`,
-      height: `${adHeight}px`,
+    // Create replacement container
+    const container = document.createElement("div");
+    container.className = "adfriend-replacement";
+    Object.assign(container.style, {
+      width: `${w}px`,
+      height: `${h}px`,
       position: "relative",
       zIndex: 99999,
       display: "flex",
       justifyContent: "center",
       alignItems: "center",
-      background: "#f3f3f3",
+      background: "#FF0000",
       border: "1px solid #ccc"
     });
 
-    adElement.style.display = "none";
-    adElement.parentNode.insertBefore(replacement, adElement.nextSibling);
+    el.replaceWith(container);
 
-    // --- Random Content Generation ---
-    const contentOptions = ['quote', 'reminder', 'todo']; // Content types to choose from
-    const randomContentType = contentOptions[Math.floor(Math.random() * contentOptions.length)];
+    // Select content type in sequence
+    const type = this.types[this.counter % this.types.length];
+    this.counter++;
 
-    // Retrieve content from storage based on randomContentType
-    chrome.storage.local.get([randomContentType], (result) => {
-      const customContent = result[randomContentType] || 'This is a custom ad replacement!';
-      console.log(`Custom content from storage for ${randomContentType}:`, customContent);
-
-      // Display the content based on the random selection
-      if (randomContentType === 'quote') {
-        replacement.innerHTML = `<p>"${customContent}"</p>`;
-      } else if (randomContentType === 'reminder') {
-        replacement.innerHTML = `<p>"${customContent}"</p>`;
-      } else if (randomContentType === 'todo') {
-        replacement.innerHTML = `<ul><li>${customContent}</li></ul>`;
-      } else {
-        // Default custom content
-        replacement.innerHTML = customContent;
+    chrome.storage.local.get([type], res => {
+      let content = res[type];
+      
+      // Handle missing content
+      if (!content) {
+        console.warn(`⚠️ No stored content for ${type}, using default.`);
+        content = getDefaultContent(type);
+      } 
+      // Parse string content
+      else if (typeof content === 'string') {
+        try {
+          content = JSON.parse(content);
+        } catch (e) {
+          console.warn(`⚠️ Error parsing ${type} content, using default.`);
+          content = getDefaultContent(type);
+        }
       }
+
+      // Validate content structure
+      switch (type) {
+        case 'quote':
+        case 'reminder':
+          if (!Array.isArray(content)) {
+            console.warn(`⚠️ Content for ${type} invalid, using default.`);
+            content = getDefaultContent(type);
+          }
+          break;
+        case 'todo':
+          if (!Array.isArray(content)) {
+            console.warn(`⚠️ Todo content invalid, using default.`);
+            content = getDefaultContent(type);
+          }
+          break;
+      }
+
+      // Render content
+      let contentElement;
+      switch (type) {
+        case 'quote':
+          // Render one quote at a time
+          const currentQuote = content[this.quoteIndex % content.length];
+          contentElement = renderQuote([currentQuote], w, h);
+          this.quoteIndex++; // Move to the next quote
+          break;
+        case 'reminder':
+          // Render one reminder at a time
+          const currentReminder = content[this.reminderIndex % content.length];
+          contentElement = renderReminder([currentReminder], w, h);
+          this.reminderIndex++; // Move to the next reminder
+          break;
+        case 'todo':
+          contentElement = renderTodoLists(content, w, h);
+          break;
+        default:
+          contentElement = createDefaultText("Content not available");
+      }
+
+      container.appendChild(contentElement);
     });
   }
+}
+
+// --- Default Content ---
+function getDefaultContent(type) {
+  const defaults = {
+    quote: ["Stay positive and keep pushing forward!"],
+    reminder: ["Remember to take a break!"],
+    todo: [{ text: "Sample Task", time: "00:00" }]
+  };
+  return defaults[type] || [];
+}
+
+// --- Create Default Fallback Text ---
+function createDefaultText(message) {
+  const div = document.createElement("div");
+  div.textContent = message;
+  div.style.cssText = "font-size: 16px; text-align: center; color: #666;";
+  return div;
 }
 
 const manager = new ReplacementManager();
@@ -113,10 +164,8 @@ const manager = new ReplacementManager();
 function initialScan() {
   console.log("🔍 Initial ad scan...");
   const selectors = "ins.adsbygoogle, iframe[src*='ad'], div[id*='ad'], div[class*='ad']";
-  document.querySelectorAll(selectors).forEach(element => {
-    if (isAdElement(element)) {
-      manager.replaceAd(element);
-    }
+  document.querySelectorAll(selectors).forEach(el => {
+    if (isAdElement(el)) manager.replaceAd(el);
   });
 }
 
@@ -124,9 +173,12 @@ function initialScan() {
 const observer = new MutationObserver(mutations => {
   mutations.forEach(({ addedNodes }) => {
     addedNodes.forEach(node => {
-      if (node.nodeType === 1 && isAdElement(node)) {
-        manager.replaceAd(node);
-      }
+      (function scan(el) {
+        if (el.nodeType === Node.ELEMENT_NODE) {
+          if (isAdElement(el)) manager.replaceAd(el);
+          el.childNodes.forEach(scan);
+        }
+      })(node);
     });
   });
 });
@@ -134,16 +186,9 @@ const observer = new MutationObserver(mutations => {
 // --- Initialization ---
 function initialize() {
   initialScan();
-  observer.observe(document.documentElement, {
-    childList: true,
-    subtree: true
-  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
 }
 
-if (document.readyState === "complete") {
-  initialize();
-} else {
-  window.addEventListener("load", initialize);
-}
-
+if (document.readyState === "complete") initialize();
+else window.addEventListener("load", initialize);
 window.addEventListener("beforeunload", () => observer.disconnect());

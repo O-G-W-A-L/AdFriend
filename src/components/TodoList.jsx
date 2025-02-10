@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getFromStorage } from "../utils/chromeStorage";
+import { getFromStorage } from "./utils/chromeStorage";
 
 const TodoList = ({ width, height }) => {
   const [tasks, setTasks] = useState([]);
