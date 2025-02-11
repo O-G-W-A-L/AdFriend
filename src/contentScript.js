@@ -68,7 +68,7 @@ class ReplacementManager {
       display: "flex",
       justifyContent: "center",
       alignItems: "center",
-      background: "#FF0000",
+      background: "#f3f3f3",
       border: "1px solid #ccc"
     });
 

@@ -1,5 +1,4 @@
 export function renderQuote(content, width, height) {
-  console.log("Rendering Quote:", content);
   if (!content || content.length === 0) return document.createElement('div');
 
   const container = document.createElement('div');
@@ -10,14 +9,13 @@ export function renderQuote(content, width, height) {
     align-items: center;
     justify-content: center;
     padding: 20px;
-    font-style: italic;
-    text-align: center;
-    font-family: 'Georgia', serif;
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    background: #f5f5f5;
     border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    color: #2c3e50;
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    color: #333;
+    font-family: 'Georgia', serif;
+    text-align: center;
+    border: 1px solid #e0e0e0;
   `;
 
   const quoteText = document.createElement('blockquote');
@@ -25,15 +23,9 @@ export function renderQuote(content, width, height) {
     margin: 0;
     font-size: 1.4em;
     line-height: 1.6;
-    position: relative;
-    padding-left: 30px;
+    font-style: italic;
   `;
-
-  // Add a fancy quote mark
-  quoteText.innerHTML = `
-    <span style="position: absolute; left: 0; top: -10px; font-size: 3em; color: rgba(44, 62, 80, 0.2);">“</span>
-    ${content.join("<br>")}
-  `;
+  quoteText.textContent = `“${content.join(" ")}”`;
 
   container.appendChild(quoteText);
   return container;

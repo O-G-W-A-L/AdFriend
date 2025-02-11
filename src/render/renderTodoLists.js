@@ -1,5 +1,4 @@
 export function renderTodoLists(content, width, height) {
-  console.log("Rendering Todo List:", content);
   const container = document.createElement("div");
   container.style.cssText = `
     width: ${width}px;
@@ -7,10 +6,11 @@ export function renderTodoLists(content, width, height) {
     padding: 20px;
     overflow-y: auto;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);
-    border-radius: 16px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    color: #2c3e50;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    color: #333;
+    border: 1px solid #e0e0e0;
   `;
 
   if (!content || content.length === 0) {
@@ -19,7 +19,7 @@ export function renderTodoLists(content, width, height) {
     emptyMessage.style.cssText = `
       text-align: center;
       font-size: 1.2em;
-      color: rgba(44, 62, 80, 0.7);
+      color: #888;
       margin-top: 20px;
     `;
     container.appendChild(emptyMessage);
@@ -38,14 +38,13 @@ export function renderTodoLists(content, width, height) {
     li.style.cssText = `
       margin: 10px 0;
       font-size: 1em;
-      color: #2c3e50;
       display: flex;
       align-items: center;
-      background: rgba(255, 255, 255, 0.8);
+      background: #f9f9f9;
       padding: 12px;
       border-radius: 8px;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      transition: transform 0.2s ease;
+      transition: background 0.3s ease;
     `;
 
     const checkbox = document.createElement("input");
@@ -57,16 +56,30 @@ export function renderTodoLists(content, width, height) {
       cursor: pointer;
     `;
 
-    checkbox.addEventListener("change", () => {
-      if (checkbox.checked) {
+    // Load completed state from storage
+    chrome.storage.local.get(['todo'], (result) => {
+      const todos = result.todo || [];
+      const isCompleted = todos.find(t => t.text === task.text)?.completed || false;
+      if (isCompleted) {
+        checkbox.checked = true;
         li.style.textDecoration = "line-through";
-        li.style.color = "#999";
-        li.style.transform = 'translateX(10px)';
-      } else {
-        li.style.textDecoration = "none";
-        li.style.color = "#2c3e50";
-        li.style.transform = 'translateX(0)';
+        li.style.color = "#888";
       }
+    });
+
+    checkbox.addEventListener("change", () => {
+      const isCompleted = checkbox.checked;
+      li.style.textDecoration = isCompleted ? "line-through" : "none";
+      li.style.color = isCompleted ? "#888" : "#333";
+
+      // Update the completed state in storage
+      chrome.storage.local.get(['todo'], (result) => {
+        const todos = result.todo || [];
+        const updatedTodos = todos.map(t => 
+          t.text === task.text ? { ...t, completed: isCompleted } : t
+        );
+        chrome.storage.local.set({ todo: updatedTodos });
+      });
     });
 
     const taskText = document.createElement("span");
