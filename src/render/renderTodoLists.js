@@ -1,4 +1,4 @@
-export function renderTodoLists(content, width, height) {
+export function renderTodoLists(content, width, height, onComplete) {
   const container = document.createElement("div");
   container.style.cssText = `
     width: ${width}px;
@@ -15,7 +15,7 @@ export function renderTodoLists(content, width, height) {
 
   if (!content || content.length === 0) {
     const emptyMessage = document.createElement('div');
-    emptyMessage.textContent = "No tasks to display. Add some!";
+    emptyMessage.textContent = "All to-do online today is done, just don't forget to do some exercises";
     emptyMessage.style.cssText = `
       text-align: center;
       font-size: 1.2em;
@@ -56,29 +56,13 @@ export function renderTodoLists(content, width, height) {
       cursor: pointer;
     `;
 
-    // Load completed state from storage
-    chrome.storage.local.get(['todo'], (result) => {
-      const todos = result.todo || [];
-      const isCompleted = todos.find(t => t.text === task.text)?.completed || false;
-      if (isCompleted) {
-        checkbox.checked = true;
-        li.style.textDecoration = "line-through";
-        li.style.color = "#888";
-      }
-    });
-
     checkbox.addEventListener("change", () => {
-      const isCompleted = checkbox.checked;
-      li.style.textDecoration = isCompleted ? "line-through" : "none";
-      li.style.color = isCompleted ? "#888" : "#333";
-
-      // Update the completed state in storage
       chrome.storage.local.get(['todo'], (result) => {
         const todos = result.todo || [];
-        const updatedTodos = todos.map(t => 
-          t.text === task.text ? { ...t, completed: isCompleted } : t
-        );
-        chrome.storage.local.set({ todo: updatedTodos });
+        const updatedTodos = todos.filter(t => t.text !== task.text);
+        chrome.storage.local.set({ todo: updatedTodos }, () => {
+          if (onComplete) onComplete(); // Refresh the content
+        });
       });
     });
 

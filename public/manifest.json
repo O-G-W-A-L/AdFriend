@@ -40,6 +40,8 @@
   "web_accessible_resources": [
     {
       "resources": [
+        "quotes.csv",
+        "reminders.csv",
         "react.production.min.js",
         "react-dom.production.min.js",
         "components/*.jsx",

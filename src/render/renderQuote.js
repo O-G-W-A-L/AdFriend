@@ -1,32 +1,99 @@
-export function renderQuote(content, width, height) {
-  if (!content || content.length === 0) return document.createElement('div');
+let quotesCache = null;
 
-  const container = document.createElement('div');
+async function loadQuotes() {
+  if (quotesCache) return quotesCache;
+  try {
+    const response = await fetch(chrome.runtime.getURL("quotes.csv"));
+    const csvText = await response.text();
+    let lines = csvText.split("\n").map((line) => line.trim()).filter((line) => line);
+    if (lines.length > 0 && (lines[0].toLowerCase().includes("quote") || lines[0].toLowerCase().includes("author"))) {
+      lines.shift();
+    }
+    quotesCache = lines.map((line) => {
+      if (line.indexOf(",") === -1) {
+        return { text: line.replace(/^"|"$/g, ""), author: "" };
+      } else {
+        const idx = line.indexOf(",");
+        return {
+          text: line.substring(0, idx).replace(/^"|"$/g, "").trim(),
+          author: line.substring(idx + 1).replace(/^"|"$/g, "").trim(),
+        };
+      }
+    }).filter((item) => item && item.text);
+    console.log("Loaded quotes:", quotesCache);
+    return quotesCache;
+  } catch (error) {
+    console.error("Failed to load quotes:", error);
+    return [];
+  }
+}
+
+export async function renderQuote(userContent, width, height) {
+  let quotes;
+
+  // If user added quotes, use them first
+  if (userContent && Array.isArray(userContent) && userContent.length > 0) {
+    quotes = userContent.map((quote) => (typeof quote === "string" ? { text: quote, author: "" } : quote));
+  } else {
+    quotes = await loadQuotes();
+  }
+
+  if (!quotes || quotes.length === 0) {
+    console.error("No quotes available");
+    return null;
+  }
+
+  // Randomly select a quote and log for debugging
+  const randomIndex = Math.floor(Math.random() * quotes.length);
+  const quote = quotes[randomIndex];
+  console.log("Selected quote index:", randomIndex, "Quote:", quote);
+
+  // Set up container using intercepted ad dimensions.
+  const container = document.createElement("div");
   container.style.cssText = `
     width: ${width}px;
     height: ${height}px;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 20px;
-    background: #f5f5f5;
+    padding: 30px;
+    background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
     border-radius: 12px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    color: #333;
-    font-family: 'Georgia', serif;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    color: #2d3748;
     text-align: center;
-    border: 1px solid #e0e0e0;
+    border: 1px solid #e2e8f0;
+    transition: transform 0.2s ease;
+    overflow: hidden;
   `;
+  container.onmouseenter = () => (container.style.transform = "scale(1.02)");
+  container.onmouseleave = () => (container.style.transform = "none");
 
-  const quoteText = document.createElement('blockquote');
+  const quoteText = document.createElement("blockquote");
+  quoteText.textContent = `“${quote.text}”`;
   quoteText.style.cssText = `
     margin: 0;
-    font-size: 1.4em;
+    font-size: 1.3rem;
     line-height: 1.6;
     font-style: italic;
+    font-family: 'Georgia', serif;
+    max-width: 90%;
+    padding: 0 30px;
   `;
-  quoteText.textContent = `“${content.join(" ")}”`;
 
   container.appendChild(quoteText);
+  if (quote.author) {
+    const author = document.createElement("div");
+    author.textContent = `— ${quote.author}`;
+    author.style.cssText = `
+      margin-top: 20px;
+      font-size: 1rem;
+      color: #718096;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-weight: 500;
+    `;
+    container.appendChild(author);
+  }
   return container;
 }

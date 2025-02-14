@@ -1,6 +1,34 @@
-export function renderReminder(content, width, height) {
-  if (!content || content.length === 0) return document.createElement('div');
+let remindersCache = null;
 
+async function loadReminders() {
+  if (remindersCache) return remindersCache;
+  try {
+    const response = await fetch(chrome.runtime.getURL('reminders.csv'));
+    const csvText = await response.text();
+    remindersCache = csvText
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+      .map(line => line.replace(/^"|"$/g, ''));
+    return remindersCache;
+  } catch (error) {
+    console.error('Failed to load reminders:', error);
+    return [];
+  }
+}
+
+export async function renderReminder(userContent, width, height) {
+  let reminders;
+  if (userContent && Array.isArray(userContent) && userContent.length > 0) {
+    reminders = userContent;
+  } else {
+    reminders = await loadReminders();
+  }
+  if (!reminders || reminders.length === 0) return null;
+  
+  const activeReminder = reminders[Math.floor(Math.random() * reminders.length)];
+  
+  // Set up container to match intercepted ad dimensions.
   const container = document.createElement('div');
   container.style.cssText = `
     width: ${width}px;
@@ -10,64 +38,65 @@ export function renderReminder(content, width, height) {
     align-items: center;
     justify-content: center;
     padding: 25px;
-    background: #ffffff;
+    background: #fff;
     border-radius: 12px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    color: #333;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: #2d3748;
     text-align: center;
-    border: 1px solid #e0e0e0;
+    border: 1px solid #e2e8f0;
+    transition: transform 0.2s ease;
+    overflow: hidden;
   `;
-
-  const icon = document.createElement('div');
-  icon.style.cssText = `
-    font-size: 2.5em;
-    margin-bottom: 15px;
-    color: #666;
-  `;
-  icon.textContent = "⏰";
-
+  container.onmouseenter = () => container.style.transform = 'translateY(-2px)';
+  container.onmouseleave = () => container.style.transform = 'none';
+  
   const text = document.createElement('div');
+  text.textContent = activeReminder;
   text.style.cssText = `
-    font-size: 1.2em;
+    font-size: 1.1rem;
     font-weight: 500;
     margin-bottom: 20px;
+    line-height: 1.5;
+    max-width: 90%;
   `;
-  text.textContent = content.join(" ");
-
-  // Add "Task Completed" button
+  
   const completeButton = document.createElement('button');
-  completeButton.textContent = "Mark as Completed";
+  completeButton.textContent = "Mark Completed";
   completeButton.style.cssText = `
-    padding: 10px 20px;
-    font-size: 1em;
-    color: #fff;
-    background: #4CAF50;
+    padding: 8px 20px;
+    font-size: 0.95rem;
+    background: #48bb78;
+    color: white;
     border: none;
-    border-radius: 8px;
+    border-radius: 6px;
     cursor: pointer;
-    transition: background 0.3s ease;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   `;
-
+  completeButton.onmouseenter = () => completeButton.style.background = '#38a169';
+  completeButton.onmouseleave = () => completeButton.style.background = '#48bb78';
+  
   completeButton.addEventListener('click', () => {
-    // Update the task to "Completed"
     text.innerHTML = `
-      <span style="text-decoration: line-through; color: #888;">${content.join(" ")}</span>
-      <div style="margin-top: 10px; color: #4CAF50; font-weight: bold;">✅ Task Completed!</div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#48bb78">
+          <path d="M0 0h24v24H0z" fill="none"/>
+          <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+        </svg>
+        <span style="text-decoration: line-through; color: #718096">
+          ${activeReminder}
+        </span>
+      </div>
     `;
-    completeButton.style.display = 'none'; // Hide the button after completion
-
-    // Save the completed state to storage
-    chrome.storage.local.get(['reminder'], (result) => {
-      const reminders = result.reminder || [];
-      const updatedReminders = reminders.map(reminder => 
-        reminder === content.join(" ") ? `✅ ${reminder}` : reminder
-      );
-      chrome.storage.local.set({ reminder: updatedReminders });
+    completeButton.remove();
+    
+    chrome.storage.local.get(['reminders'], (result) => {
+      const updated = (result.reminders || []).filter(r => r !== activeReminder);
+      chrome.storage.local.set({ reminders: updated });
     });
   });
-
-  container.appendChild(icon);
+  
   container.appendChild(text);
   container.appendChild(completeButton);
   return container;
