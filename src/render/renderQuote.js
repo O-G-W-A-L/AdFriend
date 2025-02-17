@@ -48,6 +48,11 @@ export async function renderQuote(userContent, width, height) {
   const quote = quotes[randomIndex];
   console.log("Selected quote index:", randomIndex, "Quote:", quote);
 
+  // Check if the page is using dark theme.
+  const isDark =
+    document.documentElement.classList.contains("dark") ||
+    window.matchMedia("(prefers-color-scheme: dark)").matches;
+
   // Set up container using intercepted ad dimensions.
   const container = document.createElement("div");
   container.style.cssText = `
@@ -58,12 +63,12 @@ export async function renderQuote(userContent, width, height) {
     align-items: center;
     justify-content: center;
     padding: 30px;
-    background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+    background: ${isDark ? "#2D3748" : "#FFF"};
+    border: 1px solid ${isDark ? "#4A5568" : "#E2E8F0"};
     border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    color: #2d3748;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    color: ${isDark ? "#E2E8F0" : "#2D3748"};
     text-align: center;
-    border: 1px solid #e2e8f0;
     transition: transform 0.2s ease;
     overflow: hidden;
   `;
@@ -89,7 +94,7 @@ export async function renderQuote(userContent, width, height) {
     author.style.cssText = `
       margin-top: 20px;
       font-size: 1rem;
-      color: #718096;
+      color: ${isDark ? "#A0AEC0" : "#718096"};
       font-family: 'Segoe UI', system-ui, sans-serif;
       font-weight: 500;
     `;
