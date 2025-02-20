@@ -1,6 +1,7 @@
 {
   "type": "module",
   "name": "adfriend-extension",
+  "aurthor": "Hunter",
   "version": "1.0.0",
   "scripts": {
     "dev": "vite build --watch --mode development",
