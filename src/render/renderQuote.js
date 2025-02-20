@@ -1,5 +1,6 @@
 let quotesCache = null;
 
+// Helper function to load quotes from CSV
 async function loadQuotes() {
   if (quotesCache) return quotesCache;
   try {
@@ -28,6 +29,7 @@ async function loadQuotes() {
   }
 }
 
+// Main function to render the quote with the updated style
 export async function renderQuote(userContent, width, height) {
   let quotes;
 
@@ -63,42 +65,49 @@ export async function renderQuote(userContent, width, height) {
     align-items: center;
     justify-content: center;
     padding: 30px;
-    background: ${isDark ? "#2D3748" : "#FFF"};
+    background: ${isDark ? "#2C3E50" : "#FFF"};
     border: 1px solid ${isDark ? "#4A5568" : "#E2E8F0"};
     border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.15);
     color: ${isDark ? "#E2E8F0" : "#2D3748"};
+    font-family: 'Poppins', sans-serif;
     text-align: center;
     transition: transform 0.2s ease;
     overflow: hidden;
   `;
-  container.onmouseenter = () => (container.style.transform = "scale(1.02)");
+  container.onmouseenter = () => (container.style.transform = "scale(1.05)");
   container.onmouseleave = () => (container.style.transform = "none");
 
+  // Quote Text Styling (font size, color, style, etc.)
   const quoteText = document.createElement("blockquote");
   quoteText.textContent = `“${quote.text}”`;
   quoteText.style.cssText = `
     margin: 0;
-    font-size: 1.3rem;
-    line-height: 1.6;
-    font-style: italic;
-    font-family: 'Georgia', serif;
+    font-size: 1.4rem;  /* Consistent with other component font size */
+    line-height: 1.8;  /* Ensure readability and proper spacing */
+    font-style: italic;  /* Italics for emphasis */
+    font-family: 'Georgia', serif;  /* Aligns with the elegant font style */
     max-width: 90%;
     padding: 0 30px;
+    opacity: 1;
+    color: ${isDark ? "#E2E8F0" : "#2D3748"};  /* Text color based on theme */
   `;
 
   container.appendChild(quoteText);
+
+  // Author Styling (smaller font size, gray color)
   if (quote.author) {
     const author = document.createElement("div");
     author.textContent = `— ${quote.author}`;
     author.style.cssText = `
       margin-top: 20px;
-      font-size: 1rem;
-      color: ${isDark ? "#A0AEC0" : "#718096"};
+      font-size: 1rem;  /* Smaller font size for author */
+      color: ${isDark ? "#A0AEC0" : "#718096"};  /* Light gray text for author */
       font-family: 'Segoe UI', system-ui, sans-serif;
       font-weight: 500;
     `;
     container.appendChild(author);
   }
+
   return container;
 }
