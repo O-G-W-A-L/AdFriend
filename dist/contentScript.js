@@ -1,90 +1,73 @@
-let m=null;async function w(){if(m)return m;try{let t=(await(await fetch(chrome.runtime.getURL("quotes.csv"))).text()).split(`
-`).map(e=>e.trim()).filter(e=>e);return t.length>0&&(t[0].toLowerCase().includes("quote")||t[0].toLowerCase().includes("author"))&&t.shift(),m=t.map(e=>{if(e.indexOf(",")===-1)return{text:e.replace(/^"|"$/g,""),author:""};{const a=e.indexOf(",");return{text:e.substring(0,a).replace(/^"|"$/g,"").trim(),author:e.substring(a+1).replace(/^"|"$/g,"").trim()}}}).filter(e=>e&&e.text),console.log("Loaded quotes:",m),m}catch(n){return console.error("Failed to load quotes:",n),[]}}async function v(n,o,t){let e;if(n&&Array.isArray(n)&&n.length>0?e=n.map(r=>typeof r=="string"?{text:r,author:""}:r):e=await w(),!e||e.length===0)return console.error("No quotes available"),null;const a=Math.floor(Math.random()*e.length),c=e[a];console.log("Selected quote index:",a,"Quote:",c);const d=document.documentElement.classList.contains("dark")||window.matchMedia("(prefers-color-scheme: dark)").matches,s=document.createElement("div");s.style.cssText=`
-    width: ${o}px;
-    height: ${t}px;
+let y=null;async function S(){if(y)return y;try{let n=(await(await fetch(chrome.runtime.getURL("quotes.csv"))).text()).split(`
+`).map(o=>o.trim()).filter(o=>o);return n.length>0&&(n[0].toLowerCase().includes("quote")||n[0].toLowerCase().includes("author"))&&n.shift(),y=n.map(o=>{if(o.indexOf(",")===-1)return{text:o.replace(/^"|"$/g,""),author:""};{const i=o.indexOf(",");return{text:o.substring(0,i).replace(/^"|"$/g,"").trim(),author:o.substring(i+1).replace(/^"|"$/g,"").trim()}}}).filter(o=>o&&o.text),y}catch(t){return console.error("Failed to load quotes:",t),[]}}async function A(t,e,n){const o=await new Promise(r=>chrome.storage.local.get("activeQuotes",d=>r(d.activeQuotes||[])));let i=o.length>0?o:(t==null?void 0:t.length)>0?t.map(r=>typeof r=="string"?{text:r,author:""}:r):await S();if(!i.length)return null;const c=i[Math.floor(Math.random()*i.length)],l=await new Promise(r=>chrome.storage.local.get("displaySettings",d=>r(d.displaySettings||{textColor:"#000000",backgroundColor:"#ffffff",fontSize:"16px",fontFamily:"Arial, sans-serif"}))),a=document.createElement("div");a.style.cssText=`
+    width: ${e}px;
+    height: ${n}px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 30px;
-    background: ${d?"#2D3748":"#FFF"};
-    border: 1px solid ${d?"#4A5568":"#E2E8F0"};
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    color: ${d?"#E2E8F0":"#2D3748"};
+    padding: 20px;
+    background: ${l.backgroundColor};
+    border-radius: 8px;
+    color: ${l.textColor};
+    font-family: ${l.fontFamily};
+    font-size: ${l.fontSize};
     text-align: center;
     transition: transform 0.2s ease;
-    overflow: hidden;
-  `,s.onmouseenter=()=>s.style.transform="scale(1.02)",s.onmouseleave=()=>s.style.transform="none";const i=document.createElement("blockquote");if(i.textContent=`“${c.text}”`,i.style.cssText=`
+  `;const s=document.createElement("blockquote");if(s.textContent=`“${c.text}”`,s.style.cssText=`
     margin: 0;
-    font-size: 1.3rem;
     line-height: 1.6;
     font-style: italic;
-    font-family: 'Georgia', serif;
     max-width: 90%;
-    padding: 0 30px;
-  `,s.appendChild(i),c.author){const r=document.createElement("div");r.textContent=`— ${c.author}`,r.style.cssText=`
-      margin-top: 20px;
-      font-size: 1rem;
-      color: ${d?"#A0AEC0":"#718096"};
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      font-weight: 500;
-    `,s.appendChild(r)}return s}let p=null;const b=async()=>{if(p)return p;try{return p=(await(await fetch(chrome.runtime.getURL("reminders.csv"))).text()).split(`
-`).map(t=>t.trim()).filter(Boolean).map(t=>t.replace(/^"|"$/g,""))}catch(n){return console.error("Failed to load reminders:",n),[]}},E=async()=>new Promise(n=>chrome.storage.local.get(["reminders"],async o=>{let t=(o.reminders||[]).map(e=>typeof e=="object"?e.text:e);t.length||(t=await b()),n(t.length?t[Math.floor(Math.random()*t.length)]:null)}));async function C(n,o,t){const e=n&&Array.isArray(n)&&n.length?n:await b();if(!(e!=null&&e.length))return null;const a=e[Math.floor(Math.random()*e.length)],c=typeof a=="object"?a.text:a,d=document.documentElement.classList.contains("dark")||window.matchMedia("(prefers-color-scheme: dark)").matches,s=document.createElement("div");s.style.cssText=`
-    position: relative;
-    width: ${o}px;
-    min-height: ${t}px;
+  `,a.appendChild(s),c.author){const r=document.createElement("div");r.textContent=`— ${c.author}`,r.style.cssText=`
+      margin-top: 15px;
+      font-size: 0.85em;
+      opacity: 0.8;
+    `,a.appendChild(r)}return a}let f=[],b=!1,h=[];function L(t,e){return new Promise(n=>{t.style.transition=`opacity ${e}ms ease`,t.style.opacity=0,setTimeout(n,e)})}function M(t,e){return new Promise(n=>{t.style.transition=`opacity ${e}ms ease`,t.style.opacity=1,setTimeout(n,e)})}function z(){const t=document.createElement("div");t.innerHTML="🎉",t.style.cssText=`
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    font-size: 3rem;
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    animation: popEffect 0.8s ease-out forwards;
+  `,document.body.appendChild(t),setTimeout(()=>t.remove(),800)}async function E(){if(h.length)return h;try{h=(await(await fetch(chrome.runtime.getURL("reminders.csv"))).text()).split(`
+`).map(e=>e.trim()).filter(e=>e)}catch(t){console.error("Error loading CSV:",t)}return h}async function R(t,e,n){let o=await new Promise(m=>chrome.storage.local.get("activeReminders",u=>m(u.activeReminders||[])));!b&&(t!=null&&t.length)&&(f=[...t],b=!0);let i=[];if(o.length>0?i=[...o]:f.length>0?i=[...f]:i=await E(),!i.length)return null;const c=await new Promise(m=>chrome.storage.local.get("displaySettings",u=>m(u.displaySettings||{textColor:"#000000",backgroundColor:"#ffffff",fontSize:"16px",fontFamily:"Arial, sans-serif"}))),l=document.createElement("div");l.style.cssText=`
+    width: ${e}px;
+    min-height: ${n}px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 25px;
-    background: ${d?"#2D3748":"#FFF"};
-    border: 1px solid ${d?"#4A5568":"#E2E8F0"};
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    font-family: 'Segoe UI', system-ui, sans-serif;
-    color: ${d?"#E2E8F0":"#2D3748"};
+    padding: 20px;
+    background: ${c.backgroundColor};
+    border-radius: 8px;
+    color: ${c.textColor};
+    font-family: ${c.fontFamily};
+    font-size: ${c.fontSize};
     text-align: center;
     transition: transform 0.2s ease;
-    overflow: hidden;
-  `,s.onmouseenter=()=>s.style.transform="translateY(-2px)",s.onmouseleave=()=>s.style.transform="none";const i=document.createElement("div");i.textContent=c,i.style.cssText=`
-    font-size: 1.1rem;
+    position: relative;
+  `;let a=Math.floor(Math.random()*i.length),s=i[a];const r=document.createElement("div");r.textContent=typeof s=="object"?s.text:s,r.style.cssText=`
+    margin-bottom: 15px;
     font-weight: 500;
-    margin-bottom: 20px;
-    line-height: 1.5;
     max-width: 90%;
-  `;const r=document.createElement("button");return r.textContent="Mark Completed",r.style.cssText=`
+    opacity: 1;
+    transition: opacity 0.3s ease;
+  `;const d=document.createElement("button");return d.textContent="✔ Done!",d.style.cssText=`
     padding: 8px 20px;
-    font-size: 0.95rem;
-    background: #48BB78;
-    color: #FFF;
+    background: #4a90e2;
+    color: white;
     border: none;
-    border-radius: 6px;
+    border-radius: 5px;
     cursor: pointer;
-    transition: background 0.2s ease, transform 0.1s ease;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  `,r.onmouseenter=()=>r.style.background="#38A169",r.onmouseleave=()=>r.style.background="#48BB78",r.onmousedown=()=>r.style.transform="scale(0.95)",r.onmouseup=()=>r.style.transform="scale(1)",r.onmouseout=()=>r.style.transform="scale(1)",r.addEventListener("click",async()=>{i.innerHTML=`
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="#48BB78">
-          <path d="M0 0h24v24H0z" fill="none"/>
-          <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
-        </svg>
-        <span style="text-decoration: line-through; color: ${d?"#A0AEC0":"#718096"};">
-          ${c}
-        </span>
-      </div>
-    `,r.remove();const l=document.createElement("div");l.textContent="Great job! Keep up the good work!",l.style.cssText=`
+    transition: opacity 0.2s ease;
+  `,d.addEventListener("click",async()=>{await L(r,300),r.innerHTML=`✅ <span style="text-decoration: line-through; opacity: 0.7;">
+      ${typeof s=="object"?s.text:s}
+    </span>`,d.remove(),z();const m=["Great job! 🎉","Well done! 👏","Task completed! ✅","You're awesome! 💪","Keep it up! 🚀"],u=document.createElement("div");u.textContent=m[Math.floor(Math.random()*m.length)],u.style.cssText=`
       position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(72,187,120,0.9);
-      color: #FFF;
-      padding: 12px 20px;
-      border-radius: 8px;
-      font-size: 1rem;
-      z-index: 10;
+      bottom: 20px;
+      font-size: 0.9em;
       opacity: 0;
       transition: opacity 0.3s ease;
-    `,s.appendChild(l),setTimeout(()=>l.style.opacity="1",50),setTimeout(()=>{l.style.opacity="0",setTimeout(()=>l.remove(),300)},1500),chrome.runtime.sendMessage({action:"reminderCompleted",reminderText:c},()=>{chrome.runtime.lastError&&console.warn(chrome.runtime.lastError.message),setTimeout(async()=>{const h=await E();h?(i.textContent=typeof h=="object"?h.text:h,s.appendChild(r)):i.textContent="You're all caught up! 🎉"},2e3)})}),s.append(i,r),s}console.log("AdFriend content script loaded!");const u={adKeywords:["\\bad\\b","\\bads\\b","\\badvert\\b","\\badvertisement\\b","\\bsponsored\\b","\\bpromoted\\b","\\bbanner\\b","\\bbannerad\\b","\\brecommended\\b"],blocklist:["\\badd\\b","\\baddress\\b","\\badmin\\b","\\badvance\\b","\\bavatar\\b","\\bbadge\\b","\\bcard\\b","\\bcloud\\b"],attributes:["data-ad","data-ad-type","role","id","class","aria-label"],minSize:{width:100,height:50}},A=new RegExp(u.adKeywords.join("|"),"i"),k=new RegExp(u.blocklist.join("|"),"i");class ${constructor(){this.types=["quote","reminder"],this.counter=0}async getUserContent(o){try{const t=await chrome.storage.local.get([o]);if(t[o]&&Array.isArray(t[o])&&t[o].length>0)return t[o]}catch(t){console.error("Error accessing user content:",t)}return null}async replaceAd(o){if(!o||!o.parentNode||o.dataset.adfriendProcessed)return;o.dataset.adfriendProcessed="true";const t=o.getBoundingClientRect(),e=t.width||300,a=t.height||250,c=document.createElement("div");Object.assign(c.style,{width:`${e}px`,height:`${a}px`,position:"relative",display:"flex",justifyContent:"center",alignItems:"center",background:"#f3f3f3",border:"1px solid #ccc",overflow:"hidden"}),o.replaceWith(c);const d=this.types[this.counter%this.types.length];this.counter++;try{const s=await this.getUserContent(d);let i;d==="quote"?i=await v(s,e,a):i=await C(s,e,a),i&&(c.innerHTML="",c.appendChild(i))}catch(s){console.error("Error rendering content:",s)}}}function x(n){if(!n||!n.matches||n.dataset.adfriendProcessed||n.closest("header, nav, footer, aside"))return!1;if(n.classList.contains("adsbygoogle")||n.hasAttribute("data-ad-client"))return!0;try{const{width:t,height:e}=n.getBoundingClientRect();if(t<u.minSize.width||e<u.minSize.height||window.getComputedStyle(n).visibility==="hidden")return!1}catch{return!1}const o=u.attributes.map(t=>(n.getAttribute(t)||"").toLowerCase()).join(" ");return A.test(o)&&!k.test(o)}const y=new $;function F(){const n="ins.adsbygoogle, iframe[src*='ad'], div[id*='ad'], div[class*='ad']";document.querySelectorAll(n).forEach(o=>{x(o)&&y.replaceAd(o)})}const f=new MutationObserver(n=>{n.forEach(({addedNodes:o})=>{o.forEach(t=>{(function e(a){a.nodeType===Node.ELEMENT_NODE&&(x(a)&&y.replaceAd(a),a.childNodes.forEach(e))})(t)})})});function g(){F(),f.observe(document.documentElement,{childList:!0,subtree:!0}),window.addEventListener("beforeunload",()=>f.disconnect())}document.readyState==="complete"?g():window.addEventListener("load",g);
+    `,l.appendChild(u),setTimeout(()=>{u.style.opacity="1",setTimeout(()=>u.style.opacity="0",1500)},100),setTimeout(async()=>{o.length>0?(o=o.filter((w,g)=>g!==a),await chrome.storage.local.set({activeReminders:o})):f.length>0?f=f.filter((w,g)=>g!==a):h=h.filter((w,g)=>g!==a);const x=o.length>0?o:f.length>0?f:await E();x.length>0?(a=Math.floor(Math.random()*x.length),s=x[a],r.style.opacity="0",r.innerHTML=typeof s=="object"?s.text:s,l.appendChild(d),await M(r,300)):(r.innerHTML="All caught up! 🎉",r.style.opacity="1")},2e3)}),l.append(r,d),l}console.log("AdFriend content script loaded!");const p={minSize:{width:100,height:50},adDomains:["doubleclick.net","googlesyndication.com","adservice.google.com","adnxs.com","adform.net","taboola.com","outbrain.com"]};function k(t){try{const e=window.getComputedStyle(t);return e.display!=="none"&&e.visibility!=="hidden"}catch{return!1}}function T(t){if(!t||!t.matches||t.dataset.adfriendProcessed||t.closest("header, nav, footer, aside"))return!1;try{const n=t.getBoundingClientRect();if(n.width<p.minSize.width||n.height<p.minSize.height)return!1}catch{return!1}if(!k(t))return!1;const e=t.tagName;if(e==="IFRAME"&&t.src){const n=t.src.toLowerCase();for(const o of p.adDomains)if(n.includes(o))return!0}if(t.matches("ins.adsbygoogle")||t.hasAttribute("data-ad-client"))return!0;if(e==="OBJECT"||e==="EMBED"){const n=(t.getAttribute("data")||t.getAttribute("src")||"").toLowerCase();if(n.endsWith(".swf")||n.includes("flash"))return!0}if(e==="IMG"&&t.src&&t.src.toLowerCase().endsWith(".gif")){const n=t.getAttribute("alt")||"",o=t.getAttribute("title")||"";if((n+o).trim()==="")return!0;const i=t.closest("a, div, span, section");if(i){const c=(i.id+" "+i.className).toLowerCase();if(/^\s*(ad|ads)\s*$/i.test(c))return!0}}if(e==="DIV"||e==="SECTION"||e==="SPAN"){const n=(t.id+" "+t.className).toLowerCase().trim();if(/^(ad|ads)$/.test(n)){const o=t.innerText.trim();if((o?o.split(/\s+/).length:0)<10||t.childElementCount<3)return!0}}return!1}class P{constructor(){this.types=["quote","reminder"],this.counter=0}async getUserContent(e){try{const n=await chrome.storage.local.get([e]);if(n[e]&&Array.isArray(n[e])&&n[e].length>0)return n[e]}catch(n){console.error("Error accessing user content:",n)}return null}async replaceAd(e){if(!e||!e.parentNode||e.dataset.adfriendProcessed)return;e.dataset.adfriendProcessed="true";const n=e.getBoundingClientRect(),o=n.width||p.minSize.width,i=n.height||p.minSize.height,c=document.createElement("div");Object.assign(c.style,{width:`${o}px`,height:`${i}px`,position:"relative",display:"flex",justifyContent:"center",alignItems:"center",background:"#f3f3f3",border:"1px solid #ccc",overflow:"hidden"}),e.replaceWith(c);const l=this.types[this.counter%this.types.length];this.counter++;try{const a=await this.getUserContent(l);let s;l==="quote"?s=await A(a,o,i):s=await R(a,o,i),s&&(c.innerHTML="",c.appendChild(s))}catch(a){console.error("Error rendering content:",a)}}}const $=new P;function N(){const t=["ins.adsbygoogle","iframe","object","embed","img","div","section","span"].join(", ");document.querySelectorAll(t).forEach(e=>{T(e)&&$.replaceAd(e)})}const C=new MutationObserver(t=>{t.forEach(({addedNodes:e})=>{e.forEach(n=>{(function o(i){i.nodeType===Node.ELEMENT_NODE&&(T(i)&&$.replaceAd(i),i.childNodes.forEach(o))})(n)})})});function v(){N(),C.observe(document.documentElement,{childList:!0,subtree:!0}),window.addEventListener("beforeunload",()=>C.disconnect())}document.readyState==="complete"?v():window.addEventListener("load",v);

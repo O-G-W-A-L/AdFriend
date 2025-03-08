@@ -1,23 +1,18 @@
-"use client"
+"use client";
+import React, { useState, useEffect } from "react";
+import { saveToStorage, getFromStorage } from "./utils/chromeStorage";
 
-import { useState, useEffect } from "react"
-import { saveToStorage, getFromStorage } from "./utils/chromeStorage"
-import {
-  FiSun,
-  FiMoon,
-  FiMonitor,
-  FiEdit2,
-  FiCheck,
-  FiTrash2,
-  FiMessageSquare,
-  FiBell,
-  FiMail,
-  FiChevronDown,
-  FiChevronUp,
-  FiToggleLeft,
-  FiToggleRight,
-  FiSettings,
-} from "react-icons/fi"
+// Import components from the components folder
+import Header from "./components/Header";
+import DisabledView from "./components/DisabledView";
+import Tabs from "./components/Tabs";
+import InputArea from "./components/InputArea";
+import ActiveItems from "./components/ActiveItems";
+import CompletedItems from "./components/CompletedItems";
+import DisplaySettings from "./components/DisplaySettings";
+import FeedbackPopup from "./components/FeedbackPopup";
+import DeleteConfirmation from "./components/DeleteConfirmation";
+import Notification from "./components/Notification";
 
 const Popup = () => {
   const [state, setState] = useState({
@@ -43,11 +38,24 @@ const Popup = () => {
       fontSize: "16px",
       fontFamily: "Arial, sans-serif",
     },
-  })
+  });
 
+  // Destructure for convenience and compute derived values
+  const { type, items, completedItems, currentInput, theme, showNotification, deleteIndex, deleteType, editingIndex, editingText, showFeedback, feedbackText, activeSectionExpanded, completedSectionExpanded, extensionEnabled, showDisplaySettings, displaySettings } = state;
+  const isDark = theme === "dark";
+  const previewItem =
+    type === "quote"
+      ? items.quote.length > 0
+        ? items.quote[0]
+        : null
+      : items.reminder.length > 0
+      ? items.reminder[0]
+      : null;
+
+  // Initial load: retrieve stored values
   useEffect(() => {
-    ;(async () => {
-      const [quotes, reminders, compQuotes, compReminders, theme, extensionEnabled, displaySettings] =
+    (async () => {
+      const [quotes, reminders, compQuotes, compReminders, storedTheme, extEnabled, storedDisplaySettings] =
         await Promise.all([
           getFromStorage("quote") || [],
           getFromStorage("reminder") || [],
@@ -61,501 +69,245 @@ const Popup = () => {
             fontSize: "16px",
             fontFamily: "Arial, sans-serif",
           },
-        ])
+        ]);
       setState((s) => ({
         ...s,
         items: { quote: quotes, reminder: reminders },
         completedItems: { quote: compQuotes, reminder: compReminders },
-        theme,
-        extensionEnabled,
-        displaySettings,
-      }))
-      document.documentElement.className = theme === "system" ? "light" : theme
-    })()
-  }, [])
+        theme: storedTheme,
+        extensionEnabled: extEnabled,
+        displaySettings: storedDisplaySettings,
+      }));
+      document.documentElement.className = storedTheme === "system" ? "light" : storedTheme;
+    })();
+  }, []);
 
+  // Update theme changes
   useEffect(() => {
-    if (state.theme) {
-      saveToStorage("theme", state.theme)
-      document.documentElement.className = state.theme === "system" ? "light" : state.theme
+    if (theme) {
+      saveToStorage("theme", theme);
+      document.documentElement.className = theme === "system" ? "light" : theme;
     }
-  }, [state.theme])
+  }, [theme]);
 
+  // Helper: show notification message
   const notify = (message, type) => {
-    setState((s) => ({ ...s, showNotification: { message, type } }))
-    setTimeout(() => setState((s) => ({ ...s, showNotification: null })), 2000)
-  }
+    setState((s) => ({ ...s, showNotification: { message, type } }));
+    setTimeout(() => setState((s) => ({ ...s, showNotification: null })), 2000);
+  };
 
+  // Update currentInput (for the InputArea component)
+  const updateCurrentInput = (newInput) => {
+    setState((s) => ({ ...s, currentInput: newInput }));
+  };
+
+  // Change the current type (quote or reminder)
+  const changeType = (newType) => {
+    setState((s) => ({ ...s, type: newType }));
+  };
+
+  // Change the theme (passed to Header)
+  const changeTheme = (newTheme) => {
+    setState((s) => ({ ...s, theme: newTheme }));
+  };
+
+  // Save a new item
   const handleSave = async () => {
-    const { text, author } = state.currentInput
-    if (!text.trim()) return
-    const newItem = { text, author, completed: false }
-    const updated = [...state.items[state.type], newItem]
-    await saveToStorage(state.type, updated)
+    const { text, author } = currentInput;
+    if (!text.trim()) return;
+    const newItem = { text, author, completed: false };
+    const updated = [...items[type], newItem];
+    await saveToStorage(type, updated);
     setState((s) => ({
       ...s,
-      items: { ...s.items, [state.type]: updated },
+      items: { ...s.items, [type]: updated },
       currentInput: { text: "", author: "" },
-    }))
-    notify(`${state.type} saved!`, "success")
-  }
+    }));
+    notify(`${type} saved!`, "success");
+  };
 
+  // Mark an active item as completed
   const toggleCompleted = async (index) => {
-    const item = state.items[state.type][index]
-    const updatedItems = state.items[state.type].filter((_, i) => i !== index)
-    const updatedCompleted = [...state.completedItems[state.type], item]
-    await saveToStorage(state.type, updatedItems)
-    await saveToStorage(`completed${state.type.charAt(0).toUpperCase() + state.type.slice(1)}s`, updatedCompleted)
+    const item = items[type][index];
+    const updatedItems = items[type].filter((_, i) => i !== index);
+    const updatedCompleted = [...completedItems[type], item];
+    await saveToStorage(type, updatedItems);
+    await saveToStorage(`completed${type.charAt(0).toUpperCase() + type.slice(1)}s`, updatedCompleted);
     setState((s) => ({
       ...s,
-      items: { ...s.items, [state.type]: updatedItems },
-      completedItems: { ...s.completedItems, [state.type]: updatedCompleted },
-    }))
-    notify(`${state.type} marked as completed!`, "success")
-  }
+      items: { ...s.items, [type]: updatedItems },
+      completedItems: { ...s.completedItems, [type]: updatedCompleted },
+    }));
+    notify(`${type} marked as completed!`, "success");
+  };
 
+  // Restore a completed item back to active
   const reSaveCompleted = async (index) => {
-    const item = state.completedItems[state.type][index]
-    const updatedCompleted = state.completedItems[state.type].filter((_, i) => i !== index)
-    const updatedItems = [...state.items[state.type], { ...item, completed: false }]
-    await saveToStorage(state.type, updatedItems)
-    await saveToStorage(`completed${state.type.charAt(0).toUpperCase() + state.type.slice(1)}s`, updatedCompleted)
+    const item = completedItems[type][index];
+    const updatedCompleted = completedItems[type].filter((_, i) => i !== index);
+    const updatedItems = [...items[type], { ...item, completed: false }];
+    await saveToStorage(type, updatedItems);
+    await saveToStorage(`completed${type.charAt(0).toUpperCase() + type.slice(1)}s`, updatedCompleted);
     setState((s) => ({
       ...s,
-      items: { ...s.items, [state.type]: updatedItems },
-      completedItems: { ...s.completedItems, [state.type]: updatedCompleted },
-    }))
-    notify(`${state.type} re-saved!`, "success")
-  }
+      items: { ...s.items, [type]: updatedItems },
+      completedItems: { ...s.completedItems, [type]: updatedCompleted },
+    }));
+    notify(`${type} re-saved!`, "success");
+  };
 
+  // Delete an item (active or completed)
   const deleteItem = async (index, delType) => {
     if (delType === "active") {
-      const updatedItems = state.items[state.type].filter((_, i) => i !== index)
-      await saveToStorage(state.type, updatedItems)
+      const updatedItems = items[type].filter((_, i) => i !== index);
+      await saveToStorage(type, updatedItems);
       setState((s) => ({
         ...s,
-        items: { ...s.items, [state.type]: updatedItems },
+        items: { ...s.items, [type]: updatedItems },
         deleteIndex: null,
         deleteType: null,
-      }))
+      }));
     } else {
-      const updatedCompleted = state.completedItems[state.type].filter((_, i) => i !== index)
-      await saveToStorage(`completed${state.type.charAt(0).toUpperCase() + state.type.slice(1)}s`, updatedCompleted)
+      const updatedCompleted = completedItems[type].filter((_, i) => i !== index);
+      await saveToStorage(`completed${type.charAt(0).toUpperCase() + type.slice(1)}s`, updatedCompleted);
       setState((s) => ({
         ...s,
-        completedItems: { ...s.completedItems, [state.type]: updatedCompleted },
+        completedItems: { ...s.completedItems, [type]: updatedCompleted },
         deleteIndex: null,
         deleteType: null,
-      }))
+      }));
     }
-    notify(`${state.type} deleted!`, "error")
-  }
+    notify(`${type} deleted!`, "error");
+  };
 
+  // Send feedback via mailto
   const sendFeedback = () => {
-    const mailtoLink = `mailto:huntertest02@gmail.com?subject=AdFriend Feedback&body=${encodeURIComponent(state.feedbackText)}`
-    window.location.href = mailtoLink
-    setState((s) => ({ ...s, feedbackText: "", showFeedback: false }))
-    notify("Feedback sent! Thank you!", "success")
-  }
+    const mailtoLink = `mailto:huntertest02@gmail.com?subject=AdFriend Feedback&body=${encodeURIComponent(feedbackText)}`;
+    window.location.href = mailtoLink;
+    setState((s) => ({ ...s, feedbackText: "", showFeedback: false }));
+    notify("Feedback sent! Thank you!", "success");
+  };
 
+  // Modify an item (e.g. update its text)
   const modifyItem = async (action, index, newText) => {
     if (action === "edit") {
-      const updatedItems = state.items[state.type].map((item, i) => (i === index ? { ...item, text: newText } : item))
-      await saveToStorage(state.type, updatedItems)
+      const updatedItems = items[type].map((item, i) => (i === index ? { ...item, text: newText } : item));
+      await saveToStorage(type, updatedItems);
       setState((s) => ({
         ...s,
-        items: { ...s.items, [state.type]: updatedItems },
+        items: { ...s.items, [type]: updatedItems },
         editingIndex: null,
         editingText: "",
-      }))
-      notify(`${state.type} updated!`, "success")
+      }));
+      notify(`${type} updated!`, "success");
     }
-  }
+  };
 
+  // Toggle extension on/off
   const toggleExtension = async () => {
-    const newState = !state.extensionEnabled
-    await saveToStorage("extensionEnabled", newState)
-    setState((s) => ({ ...s, extensionEnabled: newState }))
-    notify(`Extension ${newState ? "enabled" : "disabled"}!`, "success")
-  }
+    const newState = !extensionEnabled;
+    await saveToStorage("extensionEnabled", newState);
+    setState((s) => ({ ...s, extensionEnabled: newState }));
+    notify(`Extension ${newState ? "enabled" : "disabled"}!`, "success");
+  };
 
+  // Update display setting values
   const updateDisplaySetting = (key, value) => {
     setState((s) => ({
       ...s,
       displaySettings: { ...s.displaySettings, [key]: value },
-    }))
-  }
+    }));
+  };
 
+  // Save display settings
   const saveDisplaySettings = async () => {
-    await saveToStorage("displaySettings", state.displaySettings)
-    notify("Display settings saved!", "success")
-  }
+    await saveToStorage("displaySettings", displaySettings);
+    notify("Display settings saved!", "success");
+  };
 
-  const isDark = state.theme === "dark"
+  // Toggle sections
+  const toggleActiveSection = () => {
+    setState((s) => ({ ...s, activeSectionExpanded: !s.activeSectionExpanded }));
+  };
 
-  // Determine the preview quote (if available) when type is "quote"
-  const previewQuote =
-    state.type === "quote" && state.items.quote.length > 0 ? state.items.quote[0] : null
+  const toggleCompletedSection = () => {
+    setState((s) => ({ ...s, completedSectionExpanded: !s.completedSectionExpanded }));
+  };
+
+  // Set editing mode for an item
+  const startEditing = (index, text) => {
+    setState((s) => ({ ...s, editingIndex: index, editingText: text }));
+  };
+
+  // Set delete confirmation (for active or completed)
+  const openDeleteConfirmation = (index, delType) => {
+    setState((s) => ({ ...s, deleteIndex: index, deleteType: delType }));
+  };
 
   return (
     <div
-      className={`min-w-[400px] flex flex-col p-4 transition-colors ${isDark ? "bg-gray-900 text-gray-100" : "bg-white text-gray-900"}`}
+      className={`min-w-[400px] flex flex-col p-4 transition-colors ${
+        isDark ? "bg-gray-900 text-gray-100" : "bg-white text-gray-900"
+      }`}
     >
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent">
-          AdFriend
-        </h1>
-        <div className="flex items-center gap-2">
-          {/* Extension Toggle */}
-          <button
-            onClick={toggleExtension}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm ${
-              state.extensionEnabled
-                ? "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300"
-                : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
-            }`}
-          >
-            {state.extensionEnabled ? (
-              <FiToggleRight className="text-purple-500" size={18} />
-            ) : (
-              <FiToggleLeft size={18} />
-            )}
-            <span>{state.extensionEnabled ? "Enabled" : "Disabled"}</span>
-          </button>
+      <Header theme={theme} extensionEnabled={extensionEnabled} toggleExtension={toggleExtension} changeTheme={changeTheme} />
 
-          {/* Theme Toggles */}
-          <div className="flex gap-1">
-            {[
-              { mode: "light", icon: FiSun },
-              { mode: "dark", icon: FiMoon },
-              { mode: "system", icon: FiMonitor },
-            ].map(({ mode, icon: Icon }) => (
-              <button
-                key={mode}
-                onClick={() => setState((s) => ({ ...s, theme: mode }))}
-                className={`p-2 rounded-lg ${state.theme === mode ? "bg-purple-500 text-white" : "hover:bg-gray-200 dark:hover:bg-gray-700"}`}
-              >
-                <Icon size={18} />
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {!state.extensionEnabled ? (
-        <div className="flex flex-col items-center justify-center h-full">
-          <div className="text-center p-6 rounded-lg bg-gray-100 dark:bg-gray-800 max-w-sm">
-            <FiToggleLeft size={48} className="mx-auto mb-4 text-gray-400" />
-            <p className="text-xl font-bold mb-4">AdFriend is disabled</p>
-            <p className="text-gray-500 dark:text-gray-400 mb-6">
-              Enable AdFriend to manage your quotes and reminders
-            </p>
-            <button
-              onClick={toggleExtension}
-              className="px-6 py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors shadow-md"
-            >
-              Enable AdFriend
-            </button>
-          </div>
-        </div>
+      {/* Disabled view */}
+      {!extensionEnabled ? (
+        <DisabledView toggleExtension={toggleExtension} isDark={isDark} />
       ) : (
         <>
           {/* Tabs */}
-          <div className="flex border-b border-gray-200 dark:border-gray-700 mb-4">
-            {["quote", "reminder"].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setState((s) => ({ ...s, type: tab }))}
-                className={`px-4 py-2 -mb-px font-medium ${
-                  state.type === tab ? "border-b-2 border-purple-500 text-purple-600 dark:text-purple-400" : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                }`}
-              >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </button>
-            ))}
-          </div>
+          <Tabs type={type} setType={changeType} />
 
           {/* Input Area */}
-          <div className="space-y-3 mb-4">
-            <input
-              value={state.currentInput.text}
-              onChange={(e) => setState((s) => ({ ...s, currentInput: { ...s.currentInput, text: e.target.value } }))}
-              placeholder={`Add ${state.type}...`}
-              className={`w-full p-3 rounded-lg ${isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"} border focus:ring-2 focus:ring-purple-500`}
-            />
-            {state.type === "quote" && (
-              <input
-                value={state.currentInput.author}
-                onChange={(e) =>
-                  setState((s) => ({ ...s, currentInput: { ...s.currentInput, author: e.target.value } }))
-                }
-                placeholder="Author"
-                className={`w-full p-3 rounded-lg ${isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"} border focus:ring-2 focus:ring-purple-500`}
-              />
-            )}
-            <button
-              onClick={handleSave}
-              className="w-full py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors shadow-sm"
-            >
-              Save {state.type.charAt(0).toUpperCase() + state.type.slice(1)}
-            </button>
-          </div>
+          <InputArea
+            type={type}
+            currentInput={currentInput}
+            setCurrentInput={updateCurrentInput}
+            handleSave={handleSave}
+            isDark={isDark}
+          />
 
           {/* Active Items Section */}
-          <div className="mb-4">
-            <button
-              onClick={() => setState((s) => ({ ...s, activeSectionExpanded: !s.activeSectionExpanded }))}
-              className={`w-full flex justify-between items-center p-2 rounded-lg ${isDark ? "bg-gray-800" : "bg-gray-100"}`}
-            >
-              <h2 className="text-lg font-semibold">
-                Active {state.type.charAt(0).toUpperCase() + state.type.slice(1)}s
-              </h2>
-              {state.activeSectionExpanded ? <FiChevronUp size={20} /> : <FiChevronDown size={20} />}
-            </button>
-            {state.activeSectionExpanded && (
-              <div className="mt-2 space-y-2 max-h-[200px] overflow-y-auto">
-                {state.items[state.type]?.length > 0 ? (
-                  state.items[state.type].map((item, i) => (
-                    <div
-                      key={i}
-                      className={`group relative p-4 rounded-lg border ${
-                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className={`mt-1 p-2 rounded-full ${isDark ? "bg-gray-700" : "bg-gray-100"}`}>
-                          {state.type === "quote" ? <FiMessageSquare size={18} /> : <FiBell size={18} />}
-                        </div>
-                        <div className="flex-1">
-                          {state.editingIndex === i ? (
-                            <input
-                              value={state.editingText}
-                              onChange={(e) => setState((s) => ({ ...s, editingText: e.target.value }))}
-                              onBlur={() => modifyItem("edit", i, state.editingText)}
-                              className={`w-full p-2 bg-transparent border-b ${isDark ? "border-gray-700" : "border-gray-300"} focus:outline-none`}
-                              autoFocus
-                            />
-                          ) : (
-                            <p>
-                              {item.text}
-                              {item.author && <span className="block mt-1 text-sm opacity-75">- {item.author}</span>}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {state.type === "reminder" && (
-                            <button
-                              onClick={() => toggleCompleted(i)}
-                              className={`p-1.5 rounded-md ${isDark ? "hover:bg-gray-700" : "hover:bg-gray-200"}`}
-                            >
-                              <FiCheck size={16} />
-                            </button>
-                          )}
-                          <button
-                            onClick={() => setState((s) => ({ ...s, editingIndex: i, editingText: item.text }))}
-                            className={`p-1.5 rounded-md ${isDark ? "hover:bg-gray-700" : "hover:bg-gray-200"}`}
-                          >
-                            <FiEdit2 size={16} />
-                          </button>
-                          <button
-                            onClick={() => setState((s) => ({ ...s, deleteIndex: i, deleteType: "active" }))}
-                            className="p-1.5 hover:bg-red-500/10 text-red-500 rounded-md"
-                          >
-                            <FiTrash2 size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div
-                    className={`p-4 text-center rounded-lg border ${
-                      isDark ? "bg-gray-800 border-gray-700 text-gray-400" : "bg-white border-gray-200 text-gray-500"
-                    }`}
-                  >
-                    No active {state.type}s. Add one above!
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          <ActiveItems
+            activeSectionExpanded={activeSectionExpanded}
+            toggleActiveSection={toggleActiveSection}
+            items={items[type]}
+            type={type}
+            isDark={isDark}
+            editingIndex={editingIndex}
+            editingText={editingText}
+            startEditing={startEditing}
+            modifyItem={modifyItem}
+            toggleCompleted={toggleCompleted}
+            openDeleteConfirmation={(index) => openDeleteConfirmation(index, "active")}
+          />
 
           {/* Completed Items Section */}
-          <div className="mb-4">
-            <button
-              onClick={() => setState((s) => ({ ...s, completedSectionExpanded: !s.completedSectionExpanded }))}
-              className={`w-full flex justify-between items-center p-2 rounded-lg ${isDark ? "bg-gray-800" : "bg-gray-100"}`}
-            >
-              <h2 className="text-lg font-semibold">
-                Completed {state.type.charAt(0).toUpperCase() + state.type.slice(1)}s
-              </h2>
-              {state.completedSectionExpanded ? <FiChevronUp size={20} /> : <FiChevronDown size={20} />}
-            </button>
-            {state.completedSectionExpanded && (
-              <div className="mt-2 space-y-2 max-h-[200px] overflow-y-auto">
-                {state.completedItems[state.type]?.length > 0 ? (
-                  state.completedItems[state.type].map((item, i) => (
-                    <div
-                      key={i}
-                      className={`group relative p-4 rounded-lg border ${
-                        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className={`mt-1 p-2 rounded-full ${isDark ? "bg-gray-700" : "bg-gray-100"}`}>
-                          {state.type === "quote" ? <FiMessageSquare size={18} /> : <FiBell size={18} />}
-                        </div>
-                        <div className="flex-1">
-                          <p>
-                            {item.text}
-                            {item.author && <span className="block mt-1 text-sm opacity-75">- {item.author}</span>}
-                          </p>
-                        </div>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => reSaveCompleted(i)}
-                            className={`p-1.5 rounded-md ${isDark ? "hover:bg-gray-700" : "hover:bg-gray-200"}`}
-                          >
-                            <FiCheck size={16} />
-                          </button>
-                          <button
-                            onClick={() => setState((s) => ({ ...s, deleteIndex: i, deleteType: "completed" }))}
-                            className="p-1.5 hover:bg-red-500/10 text-red-500 rounded-md"
-                          >
-                            <FiTrash2 size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div
-                    className={`p-4 text-center rounded-lg border ${
-                      isDark ? "bg-gray-800 border-gray-700 text-gray-400" : "bg-white border-gray-200 text-gray-500"
-                    }`}
-                  >
-                    No completed {state.type}s yet.
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          <CompletedItems
+            completedSectionExpanded={completedSectionExpanded}
+            toggleCompletedSection={toggleCompletedSection}
+            completedItems={completedItems[type]}
+            type={type}
+            isDark={isDark}
+            reSaveCompleted={reSaveCompleted}
+            openDeleteConfirmation={(index) => openDeleteConfirmation(index, "completed")}
+          />
 
           {/* Display Settings Section */}
-          <div className="mb-4">
-            <button
-              onClick={() => setState((s) => ({ ...s, showDisplaySettings: !s.showDisplaySettings }))}
-              className={`w-full flex justify-between items-center p-2 rounded-lg ${isDark ? "bg-gray-800" : "bg-gray-100"}`}
-            >
-              <h2 className="text-lg font-semibold flex items-center">
-                <FiSettings className="mr-2" size={18} />
-                Display Settings
-              </h2>
-              {state.showDisplaySettings ? <FiChevronUp size={20} /> : <FiChevronDown size={20} />}
-            </button>
-
-            {state.showDisplaySettings && (
-              <div
-                className={`mt-2 p-3 border rounded-lg ${isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
-              >
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm mb-1">Text Color</label>
-                    <div className="flex items-center">
-                      <input
-                        type="color"
-                        value={state.displaySettings.textColor}
-                        onChange={(e) => updateDisplaySetting("textColor", e.target.value)}
-                        className="w-10 h-8 rounded cursor-pointer mr-2"
-                      />
-                      <input
-                        type="text"
-                        value={state.displaySettings.textColor}
-                        onChange={(e) => updateDisplaySetting("textColor", e.target.value)}
-                        className={`flex-1 p-2 text-sm rounded ${isDark ? "bg-gray-700 border-gray-600" : "bg-gray-50 border-gray-300"} border`}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm mb-1">Background Color</label>
-                    <div className="flex items-center">
-                      <input
-                        type="color"
-                        value={state.displaySettings.backgroundColor}
-                        onChange={(e) => updateDisplaySetting("backgroundColor", e.target.value)}
-                        className="w-10 h-8 rounded cursor-pointer mr-2"
-                      />
-                      <input
-                        type="text"
-                        value={state.displaySettings.backgroundColor}
-                        onChange={(e) => updateDisplaySetting("backgroundColor", e.target.value)}
-                        className={`flex-1 p-2 text-sm rounded ${isDark ? "bg-gray-700 border-gray-600" : "bg-gray-50 border-gray-300"} border`}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm mb-1">Font Size</label>
-                    <select
-                      value={state.displaySettings.fontSize}
-                      onChange={(e) => updateDisplaySetting("fontSize", e.target.value)}
-                      className={`w-full p-2 rounded ${isDark ? "bg-gray-700 border-gray-600" : "bg-gray-50 border-gray-300"} border`}
-                    >
-                      <option value="12px">Small</option>
-                      <option value="16px">Medium</option>
-                      <option value="20px">Large</option>
-                      <option value="24px">Extra Large</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm mb-1">Font Style</label>
-                    <select
-                      value={state.displaySettings.fontFamily}
-                      onChange={(e) => updateDisplaySetting("fontFamily", e.target.value)}
-                      className={`w-full p-2 rounded ${isDark ? "bg-gray-700 border-gray-600" : "bg-gray-50 border-gray-300"} border`}
-                    >
-                      <option value="Arial, sans-serif">Arial</option>
-                      <option value="Georgia, serif">Georgia</option>
-                      <option value="'Courier New', monospace">Courier New</option>
-                      <option value="'Times New Roman', serif">Times New Roman</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Preview */}
-                <div
-                  className="my-3 p-3 border rounded"
-                  style={{
-                    color: state.displaySettings.textColor,
-                    backgroundColor: state.displaySettings.backgroundColor,
-                    fontSize: state.displaySettings.fontSize,
-                    fontFamily: state.displaySettings.fontFamily,
-                  }}
-                >
-                  {state.type === "quote" ? (
-                    <>
-                      <p>{previewQuote ? previewQuote.text : "Preview quote text"}</p>
-                      <p style={{ fontSize: "0.875em", opacity: 0.75, marginTop: "4px" }}>
-                        - {previewQuote ? previewQuote.author : "Author"}
-                      </p>
-                    </>
-                  ) : (
-                    <p>{state.items.reminder.length > 0 ? state.items.reminder[0].text : "Preview reminder text"}</p>
-                  )}
-                </div>
-
-                <button
-                  onClick={saveDisplaySettings}
-                  className="w-full py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors"
-                >
-                  Save Display Settings
-                </button>
-              </div>
-            )}
-          </div>
+          <DisplaySettings
+            showDisplaySettings={showDisplaySettings}
+            toggleDisplaySettings={() => setState((s) => ({ ...s, showDisplaySettings: !s.showDisplaySettings }))}
+            displaySettings={displaySettings}
+            updateDisplaySetting={updateDisplaySetting}
+            saveDisplaySettings={saveDisplaySettings}
+            isDark={isDark}
+            type={type}
+            previewItem={previewItem}
+            activeItems={items}
+          />
         </>
       )}
 
@@ -564,73 +316,38 @@ const Popup = () => {
         onClick={() => setState((s) => ({ ...s, showFeedback: true }))}
         className="fixed bottom-4 right-4 p-3 bg-purple-500 hover:bg-purple-600 text-white rounded-full shadow-lg transition-transform transform hover:scale-110"
       >
-        <FiMail size={20} />
+        {/* Using FiMail icon from react-icons */}
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12H8m8 4H8m-4 4h16a2 2 0 002-2V6a2 2 0 00-2-2H4a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
       </button>
 
       {/* Feedback Popup */}
-      {state.showFeedback && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className={`p-6 rounded-xl max-w-sm w-full ${isDark ? "bg-gray-800" : "bg-white"}`}>
-            <h2 className="text-lg font-semibold mb-4">Talk to Us</h2>
-            <textarea
-              value={state.feedbackText}
-              onChange={(e) => setState((s) => ({ ...s, feedbackText: e.target.value }))}
-              placeholder="Your feedback..."
-              className={`w-full p-3 rounded-lg ${isDark ? "bg-gray-700 border-gray-600" : "bg-white border-gray-200"} border focus:ring-2 focus:ring-purple-500 mb-4`}
-            />
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setState((s) => ({ ...s, showFeedback: false }))}
-                className="px-4 py-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={sendFeedback}
-                className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg"
-              >
-                Send
-              </button>
-            </div>
-          </div>
-        </div>
+      {showFeedback && (
+        <FeedbackPopup
+          feedbackText={feedbackText}
+          setFeedbackText={(txt) => setState((s) => ({ ...s, feedbackText: txt }))}
+          closeFeedback={() => setState((s) => ({ ...s, showFeedback: false }))}
+          sendFeedback={sendFeedback}
+          isDark={isDark}
+        />
       )}
 
       {/* Delete Confirmation */}
-      {state.deleteIndex !== null && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className={`p-6 rounded-xl max-w-sm w-full ${isDark ? "bg-gray-800" : "bg-white"}`}>
-            <p className="mb-4">Delete this {state.type} permanently?</p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setState((s) => ({ ...s, deleteIndex: null, deleteType: null }))}
-                className="px-4 py-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => deleteItem(state.deleteIndex, state.deleteType)}
-                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
+      {deleteIndex !== null && (
+        <DeleteConfirmation
+          type={type}
+          deleteType={deleteType}
+          onCancel={() => setState((s) => ({ ...s, deleteIndex: null, deleteType: null }))}
+          onDelete={() => deleteItem(deleteIndex, deleteType)}
+          isDark={isDark}
+        />
       )}
 
       {/* Notification */}
-      {state.showNotification && (
-        <div
-          className={`fixed bottom-4 left-4 px-4 py-2 rounded-lg ${
-            state.showNotification.type === "error" ? "bg-red-500" : "bg-green-500"
-          } text-white`}
-        >
-          {state.showNotification.message}
-        </div>
-      )}
+      {showNotification && <Notification notification={showNotification} />}
     </div>
-  )
-}
+  );
+};
 
-export default Popup
+export default Popup;
