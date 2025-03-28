@@ -110,8 +110,10 @@ const DisplaySettings = ({
                   - {previewItem ? previewItem.author : "Author"}
                 </p>
               </>
-            ) : (
-              <p>{activeItems.reminder?.length > 0 ? activeItems.reminder[0].text : "Preview reminder text"}</p>
+            ) : type === "reminder" && (
+              <>
+              <p>{previewItem ? previewItem.text : "Preview reminder text"}</p>
+              </>
             )}
           </div>
 
