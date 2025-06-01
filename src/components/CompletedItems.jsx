@@ -9,7 +9,16 @@ const CompletedItems = ({
   isDark,
   reSaveCompleted,
   openDeleteConfirmation,
+  displaySettings, // Receive display settings for rendering
 }) => {
+  // Ensure displaySettings is defined and has the expected structure
+  const currentSettings = displaySettings?.[type] || {
+    textColor: "#000000",
+    backgroundColor: "#ffffff",
+    fontSize: "14px",
+    fontFamily: "Georgia, serif",
+  };
+
   return (
     <div className="mb-4">
       <button
@@ -28,6 +37,12 @@ const CompletedItems = ({
               <div
                 key={i}
                 className={`group relative p-4 rounded-lg border ${isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
+                style={{
+                  color: currentSettings.textColor,
+                  backgroundColor: currentSettings.backgroundColor,
+                  fontSize: currentSettings.fontSize,
+                  fontFamily: currentSettings.fontFamily,
+                }}
               >
                 <div className="flex items-start gap-3">
                   <div className={`mt-1 p-2 rounded-full ${isDark ? "bg-gray-700" : "bg-gray-100"}`}>
@@ -70,4 +85,3 @@ const CompletedItems = ({
 };
 
 export default CompletedItems;
-

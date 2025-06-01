@@ -2,7 +2,6 @@ let customPool = [];
 let customInitialized = false;
 let csvPool = [];
 
-// Helper functions for animations
 function fadeOut(el, duration) {
   return new Promise(resolve => {
     el.style.transition = `opacity ${duration}ms ease`;
@@ -30,6 +29,8 @@ function launchConfetti() {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1);
     animation: popEffect 0.8s ease-out forwards;
+    pointer-events: none;
+    z-index: 9999;
   `;
   document.body.appendChild(confettiEl);
   setTimeout(() => confettiEl.remove(), 800);
@@ -49,172 +50,195 @@ async function loadCSVReminders() {
   return csvPool;
 }
 
-export async function renderReminder(userContent, width, height) {
-  // First, check for active reminders saved in Chrome storage
-  let storedReminders = await new Promise((resolve) =>
+async function getStoredReminders() {
+  return new Promise((resolve) =>
     chrome.storage.local.get("activeReminders", (s) =>
       resolve(s.activeReminders || [])
     )
   );
+}
 
-  // Initialize customPool from userContent (only once) if provided
-  if (!customInitialized && userContent?.length) {
-    customPool = [...userContent];
-    customInitialized = true;
-  }
+async function saveStoredReminders(reminders) {
+  return new Promise((resolve) =>
+    chrome.storage.local.set({ activeReminders: reminders }, resolve)
+  );
+}
 
-  // Load reminders from available sources
-  let reminders = [];
-  if (storedReminders.length > 0) {
-    reminders = [...storedReminders];
-  } else if (customPool.length > 0) {
-    reminders = [...customPool];
-  } else {
-    reminders = await loadCSVReminders();
+export async function renderReminder(userContent, width, height, displaySettings, containerEl = null) {
+  let reminders = await getStoredReminders();
+  if (!reminders.length && userContent?.length > 0) {
+    reminders = userContent;
+    await saveStoredReminders(reminders);
   }
 
   if (!reminders.length) return null;
 
-  // Get display settings
-  const displaySettings = await new Promise((resolve) =>
-    chrome.storage.local.get("displaySettings", (s) =>
-      resolve(s.displaySettings || {
-        textColor: "#000000",
-        backgroundColor: "#ffffff",
-        fontSize: "16px",
-        fontFamily: "Arial, sans-serif",
-      })
-    )
-  );
+  const reminder = reminders[Math.floor(Math.random() * reminders.length)];
 
-  const container = document.createElement("div");
-  container.style.cssText = `
-    width: ${width}px;
-    min-height: ${height}px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    background: ${displaySettings.backgroundColor};
-    border-radius: 8px;
-    color: ${displaySettings.textColor};
-    font-family: ${displaySettings.fontFamily};
-    font-size: ${displaySettings.fontSize};
-    text-align: center;
-    transition: transform 0.2s ease;
-    position: relative;
-  `;
-
-  let currentReminderIndex = Math.floor(Math.random() * reminders.length);
-  let currentReminder = reminders[currentReminderIndex];
-
-  // Create text element
-  const textEl = document.createElement("div");
-  textEl.textContent = typeof currentReminder === "object" 
-    ? currentReminder.text 
-    : currentReminder;
-  textEl.style.cssText = `
-    margin-bottom: 15px;
-    font-weight: 500;
-    max-width: 90%;
-    opacity: 1;
-    transition: opacity 0.3s ease;
-  `;
-
-  // Create action button
-  const button = document.createElement("button");
-  button.textContent = "✔ Done!";
-  button.style.cssText = `
-    padding: 8px 20px;
-    background: #4a90e2;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: opacity 0.2s ease;
-  `;
-
-  // Click handler with new logic
-  button.addEventListener("click", async () => {
-    // Fade out current reminder
-    await fadeOut(textEl, 300);
-    
-    // Mark as completed
-    textEl.innerHTML = `✅ <span style="text-decoration: line-through; opacity: 0.7;">
-      ${typeof currentReminder === "object" ? currentReminder.text : currentReminder}
-    </span>`;
-    
-    // Remove the button
-    button.remove();
-
-    // Show confetti
-    launchConfetti();
-
-    // Show motivational message
-    const messages = [
-      "Great job! 🎉",
-      "Well done! 👏",
-      "Task completed! ✅",
-      "You're awesome! 💪",
-      "Keep it up! 🚀"
-    ];
-    const motivation = document.createElement("div");
-    motivation.textContent = messages[Math.floor(Math.random() * messages.length)];
-    motivation.style.cssText = `
-      position: absolute;
-      bottom: 20px;
-      font-size: 0.9em;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-    `;
-    container.appendChild(motivation);
-    
-    setTimeout(() => {
-      motivation.style.opacity = "1";
-      setTimeout(() => motivation.style.opacity = "0", 1500);
-    }, 100);
-
-    // Prepare next reminder after delay
-    setTimeout(async () => {
-      // Remove completed reminder from appropriate source
-      if (storedReminders.length > 0) {
-        storedReminders = storedReminders.filter((_, i) => i !== currentReminderIndex);
-        await chrome.storage.local.set({ activeReminders: storedReminders });
-      } else if (customPool.length > 0) {
-        customPool = customPool.filter((_, i) => i !== currentReminderIndex);
-      } else {
-        csvPool = csvPool.filter((_, i) => i !== currentReminderIndex);
-      }
-
-      // Reload reminders
-      const newReminders = storedReminders.length > 0 
-        ? storedReminders 
-        : customPool.length > 0 
-        ? customPool 
-        : await loadCSVReminders();
-
-      if (newReminders.length > 0) {
-        // Get new random reminder
-        currentReminderIndex = Math.floor(Math.random() * newReminders.length);
-        currentReminder = newReminders[currentReminderIndex];
-        
-        // Update text element
-        textEl.style.opacity = "0";
-        textEl.innerHTML = typeof currentReminder === "object" 
-          ? currentReminder.text 
-          : currentReminder;
-        
-        // Re-add button
-        container.appendChild(button);
-        await fadeIn(textEl, 300);
-      } else {
-        textEl.innerHTML = "All caught up! 🎉";
-        textEl.style.opacity = "1";
-      }
-    }, 2000);
+  const container = containerEl || document.createElement("div");
+  container.innerHTML = "";
+  Object.assign(container.style, {
+    width: `${width}px`,
+    height: `${height}px`,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '15px',
+    background: displaySettings.backgroundColor,
+    color: displaySettings.textColor,
+    fontFamily: displaySettings.fontFamily,
+    fontSize: displaySettings.fontSize,
+    borderRadius: '8px',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+    transition: 'all 0.3s ease',
+    overflow: 'hidden'
   });
 
-  container.append(textEl, button);
+  const contentWrapper = document.createElement("div");
+  Object.assign(contentWrapper.style, {
+    width: '100%',
+    textAlign: 'center',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px'
+  });
+
+  const iconElement = document.createElement("div");
+  iconElement.textContent = "⏰";
+  Object.assign(iconElement.style, {
+    fontSize: `${parseInt(displaySettings.fontSize) * 1.5}px`,
+    marginBottom: '8px'
+  });
+
+  const textElement = document.createElement("div");
+  textElement.textContent = reminder.text;
+  Object.assign(textElement.style, {
+    fontSize: displaySettings.fontSize,
+    lineHeight: '1.4',
+    fontWeight: '500',
+    wordWrap: 'break-word',
+    maxHeight: `${height * 0.7}px`,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    display: '-webkit-box',
+    '-webkit-line-clamp': '4',
+    '-webkit-box-orient': 'vertical'
+  });
+
+  contentWrapper.appendChild(iconElement);
+  contentWrapper.appendChild(textElement);
+
+  if (reminder.timestamp || reminder.priority) {
+    const metaElement = document.createElement("div");
+    metaElement.textContent = reminder.timestamp || 
+      (reminder.priority ? `Priority: ${reminder.priority}` : '');
+    Object.assign(metaElement.style, {
+      fontSize: `${parseInt(displaySettings.fontSize) * 0.8}px`,
+      opacity: '0.8',
+      marginTop: '8px'
+    });
+    contentWrapper.appendChild(metaElement);
+  }
+
+  // DONE BUTTON
+  const doneBtn = document.createElement("button");
+  doneBtn.textContent = "✓ Complete";
+  Object.assign(doneBtn.style, {
+    marginTop: '15px',
+    padding: '8px 16px',
+    backgroundColor: '#4CAF50',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '20px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: '600',
+    transition: 'all 0.3s ease',
+    boxShadow: '0 2px 4px rgba(76, 175, 80, 0.2)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px'
+  });
+
+  doneBtn.addEventListener('mouseenter', () => {
+    Object.assign(doneBtn.style, {
+      backgroundColor: '#45a049',
+      transform: 'translateY(-2px)',
+      boxShadow: '0 4px 8px rgba(76, 175, 80, 0.3)'
+    });
+  });
+
+  doneBtn.addEventListener('mouseleave', () => {
+    Object.assign(doneBtn.style, {
+      backgroundColor: '#4CAF50',
+      transform: 'translateY(0)',
+      boxShadow: '0 2px 4px rgba(76, 175, 80, 0.2)'
+    });
+  });
+
+  doneBtn.addEventListener('click', async () => {
+    try {
+      // Remove current reminder from storage
+      const updated = reminders.filter(r => r.text !== reminder.text);
+      await saveStoredReminders(updated);
+
+      launchConfetti();
+      await fadeOut(container, 300);
+
+      const remainingStored = await getStoredReminders();
+      
+      if (remainingStored.length > 0) {
+        await renderReminder(userContent, width, height, displaySettings, container);
+      } else {
+        const csvReminders = await loadCSVReminders();
+        if (csvReminders.length > 0) {
+          const randomIndex = Math.floor(Math.random() * csvReminders.length);
+          const csvReminder = csvReminders[randomIndex];
+
+          csvPool = csvPool.filter((_, i) => i !== randomIndex);
+
+          container.innerHTML = "";
+          const contentWrapper = document.createElement("div");
+          Object.assign(contentWrapper.style, {
+            width: '100%',
+            textAlign: 'center',
+            padding: '20px'
+          });
+          
+          contentWrapper.innerHTML = `
+            <div style="font-size: ${displaySettings.fontSize}; margin-bottom: 15px;">
+              ${csvReminder}
+            </div>
+          `;
+          
+          container.appendChild(contentWrapper);
+        } else {
+          container.innerHTML = `
+            <div style="text-align: center; color: ${displaySettings.textColor}">
+              <div style="font-size: 24px; margin-bottom: 10px">🎉</div>
+              <div style="font-size: ${displaySettings.fontSize}">All caught up!</div>
+            </div>
+          `;
+        }
+      }
+      await fadeIn(container, 300);
+    } catch (error) {
+      console.error('Error handling reminder completion:', error);
+    }
+  });
+
+  container.addEventListener('mouseenter', () => {
+    container.style.transform = 'scale(1.02)';
+    container.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
+  });
+  container.addEventListener('mouseleave', () => {
+    container.style.transform = 'scale(1)';
+    container.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+  });
+
+  contentWrapper.appendChild(doneBtn);
+  container.appendChild(contentWrapper);
+
   return container;
 }

@@ -1,4 +1,3 @@
-// renderQuote.js
 let quotesCache = null;
 
 async function loadQuotes() {
@@ -10,7 +9,7 @@ async function loadQuotes() {
       .split("\n")
       .map((line) => line.trim())
       .filter((line) => line);
-    // Remove header if present.
+
     if (
       lines.length > 0 &&
       (lines[0].toLowerCase().includes("quote") ||
@@ -38,39 +37,24 @@ async function loadQuotes() {
   }
 }
 
-export async function renderQuote(userContent, width, height) {
-  // First, check for active quotes stored in Chrome storage.
+export async function renderQuote(userContent, width, height, displaySettings) {
+  // Get stored quotes if available, else use provided CSV
   const storedQuotes = await new Promise((resolve) =>
     chrome.storage.local.get("activeQuotes", (s) =>
       resolve(s.activeQuotes || [])
     )
   );
-  // Use stored quotes if available; else use userContent if provided; otherwise, load from CSV.
+
   let quotes =
     storedQuotes.length > 0
       ? storedQuotes
       : userContent?.length > 0
-      ? userContent.map((q) =>
-          typeof q === "string" ? { text: q, author: "" } : q
-        )
+      ? userContent
       : await loadQuotes();
+
   if (!quotes.length) return null;
 
   const quote = quotes[Math.floor(Math.random() * quotes.length)];
-
-  // Get display settings (with default values if none are saved)
-  const displaySettings = await new Promise((resolve) =>
-    chrome.storage.local.get("displaySettings", (s) =>
-      resolve(
-        s.displaySettings || {
-          textColor: "#000000",
-          backgroundColor: "#ffffff",
-          fontSize: "16px",
-          fontFamily: "Arial, sans-serif",
-        }
-      )
-    )
-  );
 
   const container = document.createElement("div");
   container.style.cssText = `
@@ -87,7 +71,7 @@ export async function renderQuote(userContent, width, height) {
     font-family: ${displaySettings.fontFamily};
     font-size: ${displaySettings.fontSize};
     text-align: center;
-    transition: transform 0.2s ease;
+    transition: all 0.3s ease;
   `;
 
   const quoteText = document.createElement("blockquote");

@@ -12,6 +12,14 @@ const DisplaySettings = ({
   previewItem,
   activeItems,
 }) => {
+  // Ensure displaySettings is defined and has the expected structure
+  const currentSettings = displaySettings?.[type] || {
+    textColor: "#000000",
+    backgroundColor: "#ffffff",
+    fontSize: "16px",
+    fontFamily: "Arial, sans-serif",
+  };
+
   return (
     <div className="mb-4">
       <button
@@ -33,14 +41,14 @@ const DisplaySettings = ({
               <div className="flex items-center">
                 <input
                   type="color"
-                  value={displaySettings.textColor}
-                  onChange={(e) => updateDisplaySetting("textColor", e.target.value)}
+                  value={currentSettings.textColor}
+                  onChange={(e) => updateDisplaySetting(type, "textColor", e.target.value)}
                   className="w-10 h-8 rounded cursor-pointer mr-2"
                 />
                 <input
                   type="text"
-                  value={displaySettings.textColor}
-                  onChange={(e) => updateDisplaySetting("textColor", e.target.value)}
+                  value={currentSettings.textColor}
+                  onChange={(e) => updateDisplaySetting(type, "textColor", e.target.value)}
                   className={`flex-1 p-2 text-sm rounded ${isDark ? "bg-gray-700 border-gray-600" : "bg-gray-50 border-gray-300"} border`}
                 />
               </div>
@@ -51,14 +59,14 @@ const DisplaySettings = ({
               <div className="flex items-center">
                 <input
                   type="color"
-                  value={displaySettings.backgroundColor}
-                  onChange={(e) => updateDisplaySetting("backgroundColor", e.target.value)}
+                  value={currentSettings.backgroundColor}
+                  onChange={(e) => updateDisplaySetting(type, "backgroundColor", e.target.value)}
                   className="w-10 h-8 rounded cursor-pointer mr-2"
                 />
                 <input
                   type="text"
-                  value={displaySettings.backgroundColor}
-                  onChange={(e) => updateDisplaySetting("backgroundColor", e.target.value)}
+                  value={currentSettings.backgroundColor}
+                  onChange={(e) => updateDisplaySetting(type, "backgroundColor", e.target.value)}
                   className={`flex-1 p-2 text-sm rounded ${isDark ? "bg-gray-700 border-gray-600" : "bg-gray-50 border-gray-300"} border`}
                 />
               </div>
@@ -67,8 +75,8 @@ const DisplaySettings = ({
             <div>
               <label className="block text-sm mb-1">Font Size</label>
               <select
-                value={displaySettings.fontSize}
-                onChange={(e) => updateDisplaySetting("fontSize", e.target.value)}
+                value={currentSettings.fontSize}
+                onChange={(e) => updateDisplaySetting(type, "fontSize", e.target.value)}
                 className={`w-full p-2 rounded ${isDark ? "bg-gray-700 border-gray-600" : "bg-gray-50 border-gray-300"} border`}
               >
                 <option value="12px">Small</option>
@@ -81,8 +89,8 @@ const DisplaySettings = ({
             <div>
               <label className="block text-sm mb-1">Font Style</label>
               <select
-                value={displaySettings.fontFamily}
-                onChange={(e) => updateDisplaySetting("fontFamily", e.target.value)}
+                value={currentSettings.fontFamily}
+                onChange={(e) => updateDisplaySetting(type, "fontFamily", e.target.value)}
                 className={`w-full p-2 rounded ${isDark ? "bg-gray-700 border-gray-600" : "bg-gray-50 border-gray-300"} border`}
               >
                 <option value="Arial, sans-serif">Arial</option>
@@ -97,10 +105,10 @@ const DisplaySettings = ({
           <div
             className="my-3 p-3 border rounded"
             style={{
-              color: displaySettings.textColor,
-              backgroundColor: displaySettings.backgroundColor,
-              fontSize: displaySettings.fontSize,
-              fontFamily: displaySettings.fontFamily,
+              color: currentSettings.textColor,
+              backgroundColor: currentSettings.backgroundColor,
+              fontSize: currentSettings.fontSize,
+              fontFamily: currentSettings.fontFamily,
             }}
           >
             {type === "quote" ? (
@@ -125,6 +133,64 @@ const DisplaySettings = ({
           </button>
         </div>
       )}
+    </div>
+  );
+};
+
+const ReminderSettings = ({ settings, updateSetting, isDark }) => {
+  return (
+    <div className={`space-y-4 ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
+      <div className="flex flex-col gap-2">
+        <label>Text Color</label>
+        <input
+          type="color"
+          value={settings.textColor}
+          onChange={(e) => updateSetting('reminder', 'textColor', e.target.value)}
+          className="w-full h-8 rounded cursor-pointer"
+        />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <label>Background Color</label>
+        <input
+          type="color"
+          value={settings.backgroundColor}
+          onChange={(e) => updateSetting('reminder', 'backgroundColor', e.target.value)}
+          className="w-full h-8 rounded cursor-pointer"
+        />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <label>Font Size</label>
+        <select
+          value={settings.fontSize}
+          onChange={(e) => updateSetting('reminder', 'fontSize', e.target.value)}
+          className={`w-full p-2 rounded ${
+            isDark ? 'bg-gray-700 text-gray-200' : 'bg-white text-gray-800'
+          }`}
+        >
+          <option value="12px">Small</option>
+          <option value="14px">Medium</option>
+          <option value="16px">Large</option>
+          <option value="18px">Extra Large</option>
+        </select>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <label>Font Family</label>
+        <select
+          value={settings.fontFamily}
+          onChange={(e) => updateSetting('reminder', 'fontFamily', e.target.value)}
+          className={`w-full p-2 rounded ${
+            isDark ? 'bg-gray-700 text-gray-200' : 'bg-white text-gray-800'
+          }`}
+        >
+          <option value="Arial, sans-serif">Arial</option>
+          <option value="Georgia, serif">Georgia</option>
+          <option value="'Roboto', sans-serif">Roboto</option>
+          <option value="'Open Sans', sans-serif">Open Sans</option>
+        </select>
+      </div>
     </div>
   );
 };

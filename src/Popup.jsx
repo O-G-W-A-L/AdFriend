@@ -33,10 +33,18 @@ const Popup = () => {
     extensionEnabled: true,
     showDisplaySettings: false,
     displaySettings: {
-      textColor: "#000000",
-      backgroundColor: "#ffffff",
-      fontSize: "16px",
-      fontFamily: "Arial, sans-serif",
+      quote: {
+        textColor: "#000000",
+        backgroundColor: "#ffffff",
+        fontSize: "16px",
+        fontFamily: "Arial, sans-serif",
+      },
+      reminder: {
+        textColor: "#333333",
+        backgroundColor: "#f0f0f0",
+        fontSize: "14px",
+        fontFamily: "Georgia, serif",
+      },
     },
   });
 
@@ -64,10 +72,18 @@ const Popup = () => {
           getFromStorage("theme") || "light",
           getFromStorage("extensionEnabled") !== false,
           getFromStorage("displaySettings") || {
-            textColor: "#000000",
-            backgroundColor: "#ffffff",
-            fontSize: "16px",
-            fontFamily: "Arial, sans-serif",
+            quote: {
+              textColor: "#000000",
+              backgroundColor: "#ffffff",
+              fontSize: "16px",
+              fontFamily: "Arial, sans-serif",
+            },
+            reminder: {
+              textColor: "#333333",
+              backgroundColor: "#f0f0f0",
+              fontSize: "14px",
+              fontFamily: "Georgia, serif",
+            },
           },
         ]);
       setState((s) => ({
@@ -211,18 +227,30 @@ const Popup = () => {
     notify(`Extension ${newState ? "enabled" : "disabled"}!`, "success");
   };
 
-  // Update display setting values
-  const updateDisplaySetting = (key, value) => {
+  // Update display setting values for a specific type
+  const updateDisplaySetting = (updType, key, value) => {
     setState((s) => ({
       ...s,
-      displaySettings: { ...s.displaySettings, [key]: value },
+      displaySettings: {
+        ...s.displaySettings,
+        [updType]: {
+          ...s.displaySettings[updType],
+          [key]: value,
+        },
+      },
     }));
   };
 
   // Save display settings
   const saveDisplaySettings = async () => {
     await saveToStorage("displaySettings", displaySettings);
-    notify("Display settings saved!", "success");
+    // Notify content script to update
+    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+      chrome.tabs.sendMessage(tabs[0].id, {
+        action: "updateDisplaySettings"
+      });
+    });
+    notify("Display settings saved and applied!", "success");
   };
 
   // Toggle sections
@@ -283,6 +311,7 @@ const Popup = () => {
             modifyItem={modifyItem}
             toggleCompleted={toggleCompleted}
             openDeleteConfirmation={(index) => openDeleteConfirmation(index, "active")}
+            displaySettings={displaySettings[type]}
           />
 
           {/* Completed Items Section */}
@@ -294,6 +323,7 @@ const Popup = () => {
             isDark={isDark}
             reSaveCompleted={reSaveCompleted}
             openDeleteConfirmation={(index) => openDeleteConfirmation(index, "completed")}
+            displaySettings={displaySettings[type]}
           />
 
           {/* Display Settings Section */}
@@ -316,7 +346,6 @@ const Popup = () => {
         onClick={() => setState((s) => ({ ...s, showFeedback: true }))}
         className="fixed bottom-4 right-4 p-3 bg-purple-500 hover:bg-purple-600 text-white rounded-full shadow-lg transition-transform transform hover:scale-110"
       >
-        {/* Using FiMail icon from react-icons */}
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12H8m8 4H8m-4 4h16a2 2 0 002-2V6a2 2 0 00-2-2H4a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
