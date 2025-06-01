@@ -17,6 +17,7 @@ async function loadQuotes() {
     ) {
       lines.shift();
     }
+
     quotesCache = lines
       .map((line) => {
         if (line.indexOf(",") === -1) {
@@ -30,6 +31,7 @@ async function loadQuotes() {
         }
       })
       .filter((item) => item && item.text);
+
     return quotesCache;
   } catch (error) {
     console.error("Failed to load quotes:", error);
@@ -38,23 +40,27 @@ async function loadQuotes() {
 }
 
 export async function renderQuote(userContent, width, height, displaySettings) {
-  // Get stored quotes if available, else use provided CSV
   const storedQuotes = await new Promise((resolve) =>
     chrome.storage.local.get("activeQuotes", (s) =>
       resolve(s.activeQuotes || [])
     )
   );
 
-  let quotes =
+  const customQuotes =
     storedQuotes.length > 0
       ? storedQuotes
       : userContent?.length > 0
       ? userContent
-      : await loadQuotes();
+      : [];
 
-  if (!quotes.length) return null;
+  const fallbackQuotes = await loadQuotes();
 
-  const quote = quotes[Math.floor(Math.random() * quotes.length)];
+  if (customQuotes.length === 0 && fallbackQuotes.length === 0) return null;
+
+  let isUsingCustom = customQuotes.length > 0;
+  let currentIndex = 0;
+
+  const getQuotesList = () => (isUsingCustom ? customQuotes : fallbackQuotes);
 
   const container = document.createElement("div");
   container.style.cssText = `
@@ -75,25 +81,100 @@ export async function renderQuote(userContent, width, height, displaySettings) {
   `;
 
   const quoteText = document.createElement("blockquote");
-  quoteText.textContent = `“${quote.text}”`;
   quoteText.style.cssText = `
     margin: 0;
     line-height: 1.6;
     font-style: italic;
     max-width: 90%;
   `;
-  container.appendChild(quoteText);
 
-  if (quote.author) {
-    const author = document.createElement("div");
-    author.textContent = `— ${quote.author}`;
-    author.style.cssText = `
-      margin-top: 15px;
-      font-size: 0.85em;
-      opacity: 0.8;
-    `;
-    container.appendChild(author);
+  const author = document.createElement("div");
+  author.style.cssText = `
+    margin-top: 15px;
+    font-size: 0.85em;
+    opacity: 0.8;
+  `;
+
+  container.appendChild(quoteText);
+  container.appendChild(author);
+
+  // Navigation Buttons
+  const navContainer = document.createElement("div");
+  navContainer.style.cssText = `
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+  `;
+
+  const prevBtn = document.createElement("button");
+  prevBtn.textContent = "← Prev";
+  prevBtn.style.cssText = `
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    background-color: #444;
+    color: white;
+    cursor: pointer;
+    font-size: 0.85em;
+  `;
+
+  const nextBtn = document.createElement("button");
+  nextBtn.textContent = "Next →";
+  nextBtn.style.cssText = `
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    background-color: #444;
+    color: white;
+    cursor: pointer;
+    font-size: 0.85em;
+  `;
+
+  navContainer.appendChild(prevBtn);
+  navContainer.appendChild(nextBtn);
+  container.appendChild(navContainer);
+
+  function updateQuote() {
+    const currentQuotes = getQuotesList();
+
+    if (currentIndex >= currentQuotes.length) {
+      if (isUsingCustom) {
+        // Switch to fallback quotes
+        isUsingCustom = false;
+        currentIndex = 0;
+      }
+    }
+
+    const list = getQuotesList();
+    const quote = list[currentIndex];
+
+    quoteText.textContent = `“${quote.text}”`;
+    author.textContent = quote.author ? `— ${quote.author}` : "";
   }
+
+  prevBtn.onclick = () => {
+    const list = getQuotesList();
+    currentIndex = (currentIndex - 1 + list.length) % list.length;
+    updateQuote();
+  };
+
+  nextBtn.onclick = () => {
+    currentIndex++;
+    const list = getQuotesList();
+    if (currentIndex >= list.length) {
+      if (isUsingCustom) {
+        // Switch to CSV
+        isUsingCustom = false;
+        currentIndex = 0;
+      } else {
+        currentIndex = 0;
+      }
+    }
+    updateQuote();
+  };
+
+  // Initial render
+  updateQuote();
 
   return container;
 }
