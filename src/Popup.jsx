@@ -1,8 +1,8 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { saveToStorage, getFromStorage } from "./utils/chromeStorage";
 
-// Import components from the components folder
+// Import components
 import Header from "./components/Header";
 import DisabledView from "./components/DisabledView";
 import Tabs from "./components/Tabs";
@@ -14,53 +14,43 @@ import FeedbackPopup from "./components/FeedbackPopup";
 import DeleteConfirmation from "./components/DeleteConfirmation";
 import Notification from "./components/Notification";
 
+// Default settings
+const DEFAULT_DISPLAY_SETTINGS = {
+  quote: {
+    textColor: "#000000",
+    backgroundColor: "#ffffff",
+    fontSize: "16px",
+    fontFamily: "Arial, sans-serif",
+  },
+  reminder: {
+    textColor: "#333333",
+    backgroundColor: "#f0f0f0",
+    fontSize: "14px",
+    fontFamily: "Georgia, serif",
+  },
+};
+
 const Popup = () => {
-  const [state, setState] = useState({
-    type: "quote",
-    items: { quote: [], reminder: [] },
-    completedItems: { quote: [], reminder: [] },
-    currentInput: { text: "", author: "" },
-    theme: "light",
-    showNotification: null,
-    deleteIndex: null,
-    deleteType: null,
-    editingIndex: null,
-    editingText: "",
-    showFeedback: false,
-    feedbackText: "",
-    activeSectionExpanded: true,
-    completedSectionExpanded: true,
-    extensionEnabled: true,
-    showDisplaySettings: false,
-    displaySettings: {
-      quote: {
-        textColor: "#000000",
-        backgroundColor: "#ffffff",
-        fontSize: "16px",
-        fontFamily: "Arial, sans-serif",
-      },
-      reminder: {
-        textColor: "#333333",
-        backgroundColor: "#f0f0f0",
-        fontSize: "14px",
-        fontFamily: "Georgia, serif",
-      },
-    },
-  });
+  const [type, setType] = useState("quote");
+  const [items, setItems] = useState({ quote: [], reminder: [] });
+  const [completedItems, setCompletedItems] = useState({ quote: [], reminder: [] });
+  const [currentInput, setCurrentInput] = useState({ text: "", author: "" });
+  const [theme, setTheme] = useState("light");
+  const [notification, setNotification] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState({ index: null, type: null });
+  const [editing, setEditing] = useState({ index: null, text: "" });
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [sectionsExpanded, setSectionsExpanded] = useState({ active: true, completed: true });
+  const [extensionEnabled, setExtensionEnabled] = useState(true);
+  const [showDisplaySettings, setShowDisplaySettings] = useState(false);
+  const [displaySettings, setDisplaySettings] = useState(DEFAULT_DISPLAY_SETTINGS);
 
-  // Destructure for convenience and compute derived values
-  const { type, items, completedItems, currentInput, theme, showNotification, deleteIndex, deleteType, editingIndex, editingText, showFeedback, feedbackText, activeSectionExpanded, completedSectionExpanded, extensionEnabled, showDisplaySettings, displaySettings } = state;
+  // Derived values
   const isDark = theme === "dark";
-  const previewItem =
-    type === "quote"
-      ? items.quote.length > 0
-        ? items.quote[0]
-        : null
-      : items.reminder.length > 0
-      ? items.reminder[0]
-      : null;
+  const previewItem = items[type]?.[0] || null;
 
-  // Initial load: retrieve stored values
+  // Load stored data on initial render
   useEffect(() => {
     (async () => {
       const [quotes, reminders, compQuotes, compReminders, storedTheme, extEnabled, storedDisplaySettings] =
@@ -71,34 +61,20 @@ const Popup = () => {
           getFromStorage("completedReminders") || [],
           getFromStorage("theme") || "light",
           getFromStorage("extensionEnabled") !== false,
-          getFromStorage("displaySettings") || {
-            quote: {
-              textColor: "#000000",
-              backgroundColor: "#ffffff",
-              fontSize: "16px",
-              fontFamily: "Arial, sans-serif",
-            },
-            reminder: {
-              textColor: "#333333",
-              backgroundColor: "#f0f0f0",
-              fontSize: "14px",
-              fontFamily: "Georgia, serif",
-            },
-          },
+          getFromStorage("displaySettings") || DEFAULT_DISPLAY_SETTINGS,
         ]);
-      setState((s) => ({
-        ...s,
-        items: { quote: quotes, reminder: reminders },
-        completedItems: { quote: compQuotes, reminder: compReminders },
-        theme: storedTheme,
-        extensionEnabled: extEnabled,
-        displaySettings: storedDisplaySettings,
-      }));
+      
+      setItems({ quote: quotes, reminder: reminders });
+      setCompletedItems({ quote: compQuotes, reminder: compReminders });
+      setTheme(storedTheme);
+      setExtensionEnabled(extEnabled);
+      setDisplaySettings(storedDisplaySettings);
+      
       document.documentElement.className = storedTheme === "system" ? "light" : storedTheme;
     })();
   }, []);
 
-  // Update theme changes
+  // Update theme when changed
   useEffect(() => {
     if (theme) {
       saveToStorage("theme", theme);
@@ -106,230 +82,191 @@ const Popup = () => {
     }
   }, [theme]);
 
-  // Helper: show notification message
-  const notify = (message, type) => {
-    setState((s) => ({ ...s, showNotification: { message, type } }));
-    setTimeout(() => setState((s) => ({ ...s, showNotification: null })), 2000);
-  };
-
-  // Update currentInput (for the InputArea component)
-  const updateCurrentInput = (newInput) => {
-    setState((s) => ({ ...s, currentInput: newInput }));
-  };
-
-  // Change the current type (quote or reminder)
-  const changeType = (newType) => {
-    setState((s) => ({ ...s, type: newType }));
-  };
-
-  // Change the theme (passed to Header)
-  const changeTheme = (newTheme) => {
-    setState((s) => ({ ...s, theme: newTheme }));
-  };
+  // Notification helper
+  const notify = useCallback((message, type) => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 2000);
+  }, []);
 
   // Save a new item
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     const { text, author } = currentInput;
     if (!text.trim()) return;
+    
     const newItem = { text, author, completed: false };
     const updated = [...items[type], newItem];
+    
     await saveToStorage(type, updated);
-    setState((s) => ({
-      ...s,
-      items: { ...s.items, [type]: updated },
-      currentInput: { text: "", author: "" },
-    }));
+    setItems(prev => ({ ...prev, [type]: updated }));
+    setCurrentInput({ text: "", author: "" });
     notify(`${type} saved!`, "success");
-  };
+  }, [currentInput, items, type, notify]);
 
-  // Mark an active item as completed
-  const toggleCompleted = async (index) => {
+  // Mark item as completed
+  const toggleCompleted = useCallback(async (index) => {
     const item = items[type][index];
     const updatedItems = items[type].filter((_, i) => i !== index);
     const updatedCompleted = [...completedItems[type], item];
+    
     await saveToStorage(type, updatedItems);
     await saveToStorage(`completed${type.charAt(0).toUpperCase() + type.slice(1)}s`, updatedCompleted);
-    setState((s) => ({
-      ...s,
-      items: { ...s.items, [type]: updatedItems },
-      completedItems: { ...s.completedItems, [type]: updatedCompleted },
-    }));
+    
+    setItems(prev => ({ ...prev, [type]: updatedItems }));
+    setCompletedItems(prev => ({ ...prev, [type]: updatedCompleted }));
     notify(`${type} marked as completed!`, "success");
-  };
+  }, [items, completedItems, type, notify]);
 
-  // Restore a completed item back to active
-  const reSaveCompleted = async (index) => {
+  // Restore completed item
+  const reSaveCompleted = useCallback(async (index) => {
     const item = completedItems[type][index];
     const updatedCompleted = completedItems[type].filter((_, i) => i !== index);
     const updatedItems = [...items[type], { ...item, completed: false }];
+    
     await saveToStorage(type, updatedItems);
     await saveToStorage(`completed${type.charAt(0).toUpperCase() + type.slice(1)}s`, updatedCompleted);
-    setState((s) => ({
-      ...s,
-      items: { ...s.items, [type]: updatedItems },
-      completedItems: { ...s.completedItems, [type]: updatedCompleted },
-    }));
+    
+    setItems(prev => ({ ...prev, [type]: updatedItems }));
+    setCompletedItems(prev => ({ ...prev, [type]: updatedCompleted }));
     notify(`${type} re-saved!`, "success");
-  };
+  }, [completedItems, items, type, notify]);
 
-  // Delete an item (active or completed)
-  const deleteItem = async (index, delType) => {
+  // Delete an item
+  const deleteItem = useCallback(async () => {
+    const { index, type: delType } = deleteConfirm;
+    
     if (delType === "active") {
       const updatedItems = items[type].filter((_, i) => i !== index);
       await saveToStorage(type, updatedItems);
-      setState((s) => ({
-        ...s,
-        items: { ...s.items, [type]: updatedItems },
-        deleteIndex: null,
-        deleteType: null,
-      }));
+      setItems(prev => ({ ...prev, [type]: updatedItems }));
     } else {
       const updatedCompleted = completedItems[type].filter((_, i) => i !== index);
       await saveToStorage(`completed${type.charAt(0).toUpperCase() + type.slice(1)}s`, updatedCompleted);
-      setState((s) => ({
-        ...s,
-        completedItems: { ...s.completedItems, [type]: updatedCompleted },
-        deleteIndex: null,
-        deleteType: null,
-      }));
+      setCompletedItems(prev => ({ ...prev, [type]: updatedCompleted }));
     }
+    
+    setDeleteConfirm({ index: null, type: null });
     notify(`${type} deleted!`, "error");
-  };
+  }, [deleteConfirm, items, completedItems, type, notify]);
 
-  // Send feedback via mailto
-  const sendFeedback = () => {
+  // Send feedback
+  const sendFeedback = useCallback(() => {
     const mailtoLink = `mailto:huntertest02@gmail.com?subject=AdFriend Feedback&body=${encodeURIComponent(feedbackText)}`;
     window.location.href = mailtoLink;
-    setState((s) => ({ ...s, feedbackText: "", showFeedback: false }));
+    setFeedbackText("");
+    setShowFeedback(false);
     notify("Feedback sent! Thank you!", "success");
-  };
+  }, [feedbackText, notify]);
 
-  // Modify an item (e.g. update its text)
-  const modifyItem = async (action, index, newText) => {
-    if (action === "edit") {
-      const updatedItems = items[type].map((item, i) => (i === index ? { ...item, text: newText } : item));
-      await saveToStorage(type, updatedItems);
-      setState((s) => ({
-        ...s,
-        items: { ...s.items, [type]: updatedItems },
-        editingIndex: null,
-        editingText: "",
-      }));
-      notify(`${type} updated!`, "success");
-    }
-  };
+  // Modify an item
+  const modifyItem = useCallback(async () => {
+    const { index, text } = editing;
+    if (index === null) return;
+    
+    const updatedItems = items[type].map((item, i) => 
+      i === index ? { ...item, text } : item
+    );
+    
+    await saveToStorage(type, updatedItems);
+    setItems(prev => ({ ...prev, [type]: updatedItems }));
+    setEditing({ index: null, text: "" });
+    notify(`${type} updated!`, "success");
+  }, [editing, items, type, notify]);
 
-  // Toggle extension on/off
-  const toggleExtension = async () => {
+  // Toggle extension
+  const toggleExtension = useCallback(async () => {
     const newState = !extensionEnabled;
     await saveToStorage("extensionEnabled", newState);
-    setState((s) => ({ ...s, extensionEnabled: newState }));
+    setExtensionEnabled(newState);
     notify(`Extension ${newState ? "enabled" : "disabled"}!`, "success");
-  };
+  }, [extensionEnabled, notify]);
 
-  // Update display setting values for a specific type
-  const updateDisplaySetting = (updType, key, value) => {
-    setState((s) => ({
-      ...s,
-      displaySettings: {
-        ...s.displaySettings,
-        [updType]: {
-          ...s.displaySettings[updType],
-          [key]: value,
-        },
+  // Update display settings
+  const updateDisplaySetting = useCallback((settingType, key, value) => {
+    setDisplaySettings(prev => ({
+      ...prev,
+      [settingType]: {
+        ...prev[settingType],
+        [key]: value,
       },
     }));
-  };
+  }, []);
 
   // Save display settings
-  const saveDisplaySettings = async () => {
+  const saveDisplaySettings = useCallback(async () => {
     await saveToStorage("displaySettings", displaySettings);
-    // Notify content script to update
+    
+    // Notify content script
     chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
       chrome.tabs.sendMessage(tabs[0].id, {
         action: "updateDisplaySettings"
       });
     });
-    notify("Display settings saved and applied!", "success");
-  };
+    
+    notify("Display settings saved!", "success");
+  }, [displaySettings, notify]);
 
-  // Toggle sections
-  const toggleActiveSection = () => {
-    setState((s) => ({ ...s, activeSectionExpanded: !s.activeSectionExpanded }));
-  };
-
-  const toggleCompletedSection = () => {
-    setState((s) => ({ ...s, completedSectionExpanded: !s.completedSectionExpanded }));
-  };
-
-  // Set editing mode for an item
-  const startEditing = (index, text) => {
-    setState((s) => ({ ...s, editingIndex: index, editingText: text }));
-  };
-
-  // Set delete confirmation (for active or completed)
-  const openDeleteConfirmation = (index, delType) => {
-    setState((s) => ({ ...s, deleteIndex: index, deleteType: delType }));
-  };
+  // Toggle section expansion
+  const toggleSection = useCallback((section) => {
+    setSectionsExpanded(prev => ({ 
+      ...prev, 
+      [section]: !prev[section] 
+    }));
+  }, []);
 
   return (
-    <div
-      className={`min-w-[400px] flex flex-col p-4 transition-colors ${
-        isDark ? "bg-gray-900 text-gray-100" : "bg-white text-gray-900"
-      }`}
-    >
-      {/* Header */}
-      <Header theme={theme} extensionEnabled={extensionEnabled} toggleExtension={toggleExtension} changeTheme={changeTheme} />
+    <div className={`min-w-[400px] flex flex-col p-4 transition-colors ${
+      isDark ? "bg-gray-900 text-gray-100" : "bg-white text-gray-900"
+    }`}>
+      <Header 
+        theme={theme} 
+        extensionEnabled={extensionEnabled} 
+        toggleExtension={toggleExtension} 
+        changeTheme={setTheme} 
+      />
 
-      {/* Disabled view */}
       {!extensionEnabled ? (
         <DisabledView toggleExtension={toggleExtension} isDark={isDark} />
       ) : (
         <>
-          {/* Tabs */}
-          <Tabs type={type} setType={changeType} />
+          <Tabs type={type} setType={setType} />
 
-          {/* Input Area */}
           <InputArea
             type={type}
             currentInput={currentInput}
-            setCurrentInput={updateCurrentInput}
+            setCurrentInput={setCurrentInput}
             handleSave={handleSave}
             isDark={isDark}
           />
 
-          {/* Active Items Section */}
           <ActiveItems
-            activeSectionExpanded={activeSectionExpanded}
-            toggleActiveSection={toggleActiveSection}
+            activeSectionExpanded={sectionsExpanded.active}
+            toggleActiveSection={() => toggleSection('active')}
             items={items[type]}
             type={type}
             isDark={isDark}
-            editingIndex={editingIndex}
-            editingText={editingText}
-            startEditing={startEditing}
+            editingIndex={editing.index}
+            editingText={editing.text}
+            startEditing={(index, text) => setEditing({ index, text })}
             modifyItem={modifyItem}
             toggleCompleted={toggleCompleted}
-            openDeleteConfirmation={(index) => openDeleteConfirmation(index, "active")}
+            openDeleteConfirmation={(index) => setDeleteConfirm({ index, type: "active" })}
             displaySettings={displaySettings[type]}
           />
 
-          {/* Completed Items Section */}
           <CompletedItems
-            completedSectionExpanded={completedSectionExpanded}
-            toggleCompletedSection={toggleCompletedSection}
+            completedSectionExpanded={sectionsExpanded.completed}
+            toggleCompletedSection={() => toggleSection('completed')}
             completedItems={completedItems[type]}
             type={type}
             isDark={isDark}
             reSaveCompleted={reSaveCompleted}
-            openDeleteConfirmation={(index) => openDeleteConfirmation(index, "completed")}
+            openDeleteConfirmation={(index) => setDeleteConfirm({ index, type: "completed" })}
             displaySettings={displaySettings[type]}
           />
 
-          {/* Display Settings Section */}
           <DisplaySettings
             showDisplaySettings={showDisplaySettings}
-            toggleDisplaySettings={() => setState((s) => ({ ...s, showDisplaySettings: !s.showDisplaySettings }))}
+            toggleDisplaySettings={() => setShowDisplaySettings(prev => !prev)}
             displaySettings={displaySettings}
             updateDisplaySetting={updateDisplaySetting}
             saveDisplaySettings={saveDisplaySettings}
@@ -343,38 +280,37 @@ const Popup = () => {
 
       {/* Feedback Button */}
       <button
-        onClick={() => setState((s) => ({ ...s, showFeedback: true }))}
+        onClick={() => setShowFeedback(true)}
         className="fixed bottom-4 right-4 p-3 bg-purple-500 hover:bg-purple-600 text-white rounded-full shadow-lg transition-transform transform hover:scale-110"
+        aria-label="Send Feedback"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12H8m8 4H8m-4 4h16a2 2 0 002-2V6a2 2 0 00-2-2H4a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
       </button>
 
-      {/* Feedback Popup */}
+      {/* Modals */}
       {showFeedback && (
         <FeedbackPopup
           feedbackText={feedbackText}
-          setFeedbackText={(txt) => setState((s) => ({ ...s, feedbackText: txt }))}
-          closeFeedback={() => setState((s) => ({ ...s, showFeedback: false }))}
+          setFeedbackText={setFeedbackText}
+          closeFeedback={() => setShowFeedback(false)}
           sendFeedback={sendFeedback}
           isDark={isDark}
         />
       )}
 
-      {/* Delete Confirmation */}
-      {deleteIndex !== null && (
+      {deleteConfirm.index !== null && (
         <DeleteConfirmation
           type={type}
-          deleteType={deleteType}
-          onCancel={() => setState((s) => ({ ...s, deleteIndex: null, deleteType: null }))}
-          onDelete={() => deleteItem(deleteIndex, deleteType)}
+          deleteType={deleteConfirm.type}
+          onCancel={() => setDeleteConfirm({ index: null, type: null })}
+          onDelete={deleteItem}
           isDark={isDark}
         />
       )}
 
-      {/* Notification */}
-      {showNotification && <Notification notification={showNotification} />}
+      {notification && <Notification notification={notification} />}
     </div>
   );
 };

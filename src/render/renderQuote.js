@@ -63,93 +63,236 @@ export async function renderQuote(userContent, width, height, displaySettings) {
   const getQuotesList = () => (isUsingCustom ? customQuotes : fallbackQuotes);
 
   const container = document.createElement("div");
-  container.style.cssText = `
-    width: ${width}px;
-    height: ${height}px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    background: ${displaySettings.backgroundColor};
-    border-radius: 8px;
-    color: ${displaySettings.textColor};
-    font-family: ${displaySettings.fontFamily};
-    font-size: ${displaySettings.fontSize};
-    text-align: center;
-    transition: all 0.3s ease;
-  `;
+  Object.assign(container.style, {
+    width: `${width}px`,
+    height: `${height}px`,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '32px',
+    background: `linear-gradient(135deg, ${displaySettings.backgroundColor}f0, ${displaySettings.backgroundColor}e0)`,
+    backdropFilter: 'blur(20px)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '24px',
+    color: displaySettings.textColor,
+    fontFamily: displaySettings.fontFamily,
+    fontSize: displaySettings.fontSize,
+    textAlign: 'center',
+    boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.1)',
+    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+    position: 'relative',
+    overflow: 'hidden'
+  });
+
+  // Add subtle gradient overlay
+  const overlay = document.createElement("div");
+  Object.assign(overlay.style, {
+    position: 'absolute',
+    top: '0',
+    left: '0',
+    right: '0',
+    bottom: '0',
+    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%)',
+    pointerEvents: 'none',
+    borderRadius: '24px'
+  });
+  container.appendChild(overlay);
+
+  // Quote icon
+  const quoteIcon = document.createElement("div");
+  quoteIcon.innerHTML = '"';
+  Object.assign(quoteIcon.style, {
+    fontSize: `${parseInt(displaySettings.fontSize) * 3}px`,
+    opacity: '0.2',
+    fontFamily: 'Georgia, serif',
+    fontWeight: 'bold',
+    position: 'absolute',
+    top: '20px',
+    left: '24px',
+    lineHeight: '1',
+    pointerEvents: 'none',
+    zIndex: '1'
+  });
+  container.appendChild(quoteIcon);
+
+  const contentWrapper = document.createElement("div");
+  Object.assign(contentWrapper.style, {
+    position: 'relative',
+    zIndex: '2',
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '24px'
+  });
 
   const quoteText = document.createElement("blockquote");
-  quoteText.style.cssText = `
-    margin: 0;
-    line-height: 1.6;
-    font-style: italic;
-    max-width: 90%;
-  `;
+  Object.assign(quoteText.style, {
+    margin: '0',
+    lineHeight: '1.7',
+    fontStyle: 'italic',
+    fontWeight: '400',
+    maxWidth: '90%',
+    opacity: '0',
+    transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+    fontSize: `${parseInt(displaySettings.fontSize) * 1.1}px`,
+    textShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    letterSpacing: '0.3px',
+    position: 'relative'
+  });
 
   const author = document.createElement("div");
-  author.style.cssText = `
-    margin-top: 15px;
-    font-size: 0.85em;
-    opacity: 0.8;
-  `;
+  Object.assign(author.style, {
+    fontSize: `${parseInt(displaySettings.fontSize) * 0.9}px`,
+    opacity: '0',
+    transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+    fontWeight: '500',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+    position: 'relative'
+  });
 
-  container.appendChild(quoteText);
-  container.appendChild(author);
+  // Add decorative line before author
+  const decorativeLine = document.createElement("div");
+  Object.assign(decorativeLine.style, {
+    width: '40px',
+    height: '2px',
+    background: `linear-gradient(90deg, transparent, ${displaySettings.textColor}60, transparent)`,
+    margin: '0 auto 12px',
+    borderRadius: '1px'
+  });
 
-  // Navigation Buttons
+  const authorWrapper = document.createElement("div");
+  authorWrapper.appendChild(decorativeLine);
+  authorWrapper.appendChild(author);
+
+  contentWrapper.appendChild(quoteText);
+  contentWrapper.appendChild(authorWrapper);
+
   const navContainer = document.createElement("div");
-  navContainer.style.cssText = `
-    margin-top: 20px;
-    display: flex;
-    gap: 10px;
-  `;
+  Object.assign(navContainer.style, {
+    display: 'flex',
+    gap: '20px',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: '8px'
+  });
 
-  const prevBtn = document.createElement("button");
-  prevBtn.textContent = "← Prev";
-  prevBtn.style.cssText = `
-    padding: 6px 12px;
-    border: none;
-    border-radius: 4px;
-    background-color: #444;
-    color: white;
-    cursor: pointer;
-    font-size: 0.85em;
-  `;
+  function createNavButton(symbol, isDisabled = false) {
+    const btn = document.createElement("button");
+    btn.innerHTML = symbol;
+    Object.assign(btn.style, {
+      width: '48px',
+      height: '48px',
+      fontSize: '20px',
+      fontWeight: '600',
+      background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05))',
+      border: '1px solid rgba(255, 255, 255, 0.2)',
+      color: displaySettings.textColor,
+      borderRadius: '14px',
+      cursor: 'pointer',
+      opacity: isDisabled ? '0.3' : '1',
+      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      backdropFilter: 'blur(10px)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+      overflow: 'hidden'
+    });
+    btn.disabled = isDisabled;
 
-  const nextBtn = document.createElement("button");
-  nextBtn.textContent = "Next →";
-  nextBtn.style.cssText = `
-    padding: 6px 12px;
-    border: none;
-    border-radius: 4px;
-    background-color: #444;
-    color: white;
-    cursor: pointer;
-    font-size: 0.85em;
-  `;
+    // Add subtle inner glow
+    const innerGlow = document.createElement("div");
+    Object.assign(innerGlow.style, {
+      position: 'absolute',
+      top: '0',
+      left: '0',
+      right: '0',
+      bottom: '0',
+      background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%)',
+      borderRadius: '14px',
+      pointerEvents: 'none'
+    });
+    btn.appendChild(innerGlow);
+
+    const buttonText = document.createElement("span");
+    buttonText.innerHTML = symbol;
+    Object.assign(buttonText.style, {
+      position: 'relative',
+      zIndex: '1'
+    });
+    btn.appendChild(buttonText);
+
+    btn.addEventListener('mouseenter', () => {
+      if (!btn.disabled) {
+        Object.assign(btn.style, {
+          background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.3), rgba(76, 175, 80, 0.1))',
+          borderColor: 'rgba(76, 175, 80, 0.5)',
+          transform: 'translateY(-3px) scale(1.05)',
+          boxShadow: '0 12px 30px rgba(76, 175, 80, 0.25)'
+        });
+      }
+    });
+
+    btn.addEventListener('mouseleave', () => {
+      Object.assign(btn.style, {
+        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05))',
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+        transform: 'translateY(0) scale(1)',
+        boxShadow: 'none'
+      });
+    });
+
+    btn.addEventListener('mousedown', () => {
+      btn.style.transform = 'translateY(-1px) scale(0.98)';
+    });
+
+    btn.addEventListener('mouseup', () => {
+      btn.style.transform = 'translateY(-3px) scale(1.05)';
+    });
+
+    return btn;
+  }
+
+  const prevBtn = createNavButton("‹");
+  const nextBtn = createNavButton("›");
 
   navContainer.appendChild(prevBtn);
   navContainer.appendChild(nextBtn);
-  container.appendChild(navContainer);
+  contentWrapper.appendChild(navContainer);
+  container.appendChild(contentWrapper);
 
   function updateQuote() {
-    const currentQuotes = getQuotesList();
+    quoteText.style.opacity = 0;
+    author.style.opacity = 0;
+    quoteText.style.transform = 'translateY(20px)';
+    author.style.transform = 'translateY(20px)';
 
-    if (currentIndex >= currentQuotes.length) {
-      if (isUsingCustom) {
-        // Switch to fallback quotes
-        isUsingCustom = false;
-        currentIndex = 0;
+    setTimeout(() => {
+      const list = getQuotesList();
+
+      if (currentIndex >= list.length) {
+        if (isUsingCustom) {
+          isUsingCustom = false;
+          currentIndex = 0;
+        }
       }
-    }
 
-    const list = getQuotesList();
-    const quote = list[currentIndex];
+      const currentQuotes = getQuotesList();
+      const quote = currentQuotes[currentIndex];
 
-    quoteText.textContent = `“${quote.text}”`;
-    author.textContent = quote.author ? `— ${quote.author}` : "";
+      quoteText.textContent = `"${quote.text}"`;
+      author.textContent = quote.author ? `${quote.author}` : "";
+
+      setTimeout(() => {
+        quoteText.style.opacity = 1;
+        author.style.opacity = quote.author ? 0.8 : 0;
+        quoteText.style.transform = 'translateY(0)';
+        author.style.transform = 'translateY(0)';
+      }, 100);
+    }, 250);
   }
 
   prevBtn.onclick = () => {
@@ -163,7 +306,6 @@ export async function renderQuote(userContent, width, height, displaySettings) {
     const list = getQuotesList();
     if (currentIndex >= list.length) {
       if (isUsingCustom) {
-        // Switch to CSV
         isUsingCustom = false;
         currentIndex = 0;
       } else {
@@ -173,8 +315,20 @@ export async function renderQuote(userContent, width, height, displaySettings) {
     updateQuote();
   };
 
-  // Initial render
-  updateQuote();
+  container.addEventListener('mouseenter', () => {
+    Object.assign(container.style, {
+      transform: 'translateY(-6px) scale(1.02)',
+      boxShadow: '0 20px 60px rgba(0, 0, 0, 0.2), 0 8px 20px rgba(0, 0, 0, 0.15)'
+    });
+  });
+  
+  container.addEventListener('mouseleave', () => {
+    Object.assign(container.style, {
+      transform: 'translateY(0) scale(1)',
+      boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.1)'
+    });
+  });
 
+  updateQuote();
   return container;
 }
